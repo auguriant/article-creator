@@ -4,6 +4,7 @@
  */
 import { toast } from "sonner";
 import { RssFeedItem } from "./RssService";
+import { OpenAIService } from "./OpenAIService";
 
 export interface ContentGenerationParams {
   tone?: 'professional' | 'casual' | 'academic';
@@ -14,8 +15,8 @@ export interface ContentGenerationParams {
 
 export class ContentService {
   /**
-   * Rewrites content using simulated AI
-   * In a real implementation, this would call an external AI API
+   * Rewrites content using AI
+   * Uses OpenAI if configured, otherwise uses a mock implementation
    */
   static async rewriteContent(
     originalArticle: RssFeedItem,
@@ -25,10 +26,26 @@ export class ContentService {
       console.log(`Rewriting article: ${originalArticle.title}`);
       console.log(`Using parameters:`, params);
       
-      // This is a mock implementation
-      // In a real app, you would call an API like OpenAI, Claude, etc.
+      const openAIService = OpenAIService.getInstance();
       
-      // Simulate API call delay
+      // If OpenAI is configured, use it for content rewriting
+      if (openAIService.isConfigured()) {
+        try {
+          let tone = params.tone || "professional";
+          return await openAIService.rewriteContent(
+            originalArticle.title,
+            originalArticle.content,
+            originalArticle.source,
+            tone
+          );
+        } catch (error) {
+          console.error("OpenAI content generation failed, falling back to mock:", error);
+          // Fall back to mock if OpenAI fails
+        }
+      }
+      
+      // Mock implementation (fallback)
+      console.log("Using fallback mock content generation");
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Get a shortened version of the content for the mock rewrite

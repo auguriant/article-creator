@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import NewsAutomation from "./pages/NewsAutomation";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/automation" element={<NewsAutomation />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:id" element={<BlogPost />} />
+          <Route path="/admin" element={<Admin />} />
           {/* These routes will be implemented later */}
           <Route path="/category/:category" element={<Index />} />
           <Route path="/about" element={<Index />} />
