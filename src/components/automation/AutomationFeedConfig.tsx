@@ -1,16 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
-
-interface FeedSource {
-  id: string;
-  name: string;
-  url: string;
-  active: boolean;
-}
+import { FeedSource } from '@/services/AutomationService';
+import { AutomationService } from '@/services/AutomationService';
 
 const defaultFeeds: FeedSource[] = [
   { id: '1', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', active: true },
@@ -23,6 +18,19 @@ const AutomationFeedConfig = () => {
   const [feeds, setFeeds] = useState<FeedSource[]>(defaultFeeds);
   const [newFeedName, setNewFeedName] = useState('');
   const [newFeedUrl, setNewFeedUrl] = useState('');
+  const [fetchInterval, setFetchInterval] = useState('60');
+  const [maxAge, setMaxAge] = useState('1');
+  const [maxArticles, setMaxArticles] = useState('3');
+  const automationService = AutomationService.getInstance();
+
+  // Update settings when form values change
+  useEffect(() => {
+    automationService.updateSettings({
+      interval: parseInt(fetchInterval, 10),
+      maxAge: parseInt(maxAge, 10),
+      maxArticles: parseInt(maxArticles, 10),
+    });
+  }, [fetchInterval, maxAge, maxArticles]);
 
   const handleAddFeed = () => {
     if (!newFeedName.trim() || !newFeedUrl.trim()) {
@@ -154,7 +162,12 @@ const AutomationFeedConfig = () => {
         <div className="space-y-4">
           <div className="grid gap-2">
             <label htmlFor="fetch-interval" className="text-sm font-medium">Fetch Interval</label>
-            <select id="fetch-interval" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+            <select 
+              id="fetch-interval" 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              value={fetchInterval}
+              onChange={(e) => setFetchInterval(e.target.value)}
+            >
               <option value="30">Every 30 minutes</option>
               <option value="60">Every hour</option>
               <option value="180">Every 3 hours</option>
@@ -166,7 +179,12 @@ const AutomationFeedConfig = () => {
           
           <div className="grid gap-2">
             <label htmlFor="max-age" className="text-sm font-medium">Maximum Article Age</label>
-            <select id="max-age" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+            <select 
+              id="max-age" 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              value={maxAge}
+              onChange={(e) => setMaxAge(e.target.value)}
+            >
               <option value="1">Up to 1 day old</option>
               <option value="2">Up to 2 days old</option>
               <option value="3">Up to 3 days old</option>
@@ -176,7 +194,12 @@ const AutomationFeedConfig = () => {
           
           <div className="grid gap-2">
             <label htmlFor="max-articles" className="text-sm font-medium">Maximum Articles Per Run</label>
-            <select id="max-articles" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+            <select 
+              id="max-articles" 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              value={maxArticles}
+              onChange={(e) => setMaxArticles(e.target.value)}
+            >
               <option value="1">1 article</option>
               <option value="3">3 articles</option>
               <option value="5">5 articles</option>

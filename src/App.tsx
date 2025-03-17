@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import NewsAutomation from "./pages/NewsAutomation";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 
 const queryClient = new QueryClient();
 
@@ -19,9 +21,9 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/automation" element={<NewsAutomation />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:id" element={<BlogPost />} />
           {/* These routes will be implemented later */}
-          <Route path="/blog" element={<Index />} />
-          <Route path="/blog/:id" element={<Index />} />
           <Route path="/category/:category" element={<Index />} />
           <Route path="/about" element={<Index />} />
           <Route path="/contact" element={<Index />} />

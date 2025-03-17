@@ -1,239 +1,146 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, RefreshCw, Settings, Newspaper, Image, PenLine, RssIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import AutomationFeedConfig from "@/components/automation/AutomationFeedConfig";
-import AutomationLogs from "@/components/automation/AutomationLogs";
+import { Play, Pause, Settings, BarChart2, FileText } from "lucide-react";
 import AutomationStatus from "@/components/automation/AutomationStatus";
+import AutomationLogs from "@/components/automation/AutomationLogs";
+import AutomationFeedConfig from "@/components/automation/AutomationFeedConfig";
+import { AutomationService, FeedSource } from "@/services/AutomationService";
+import { toast } from "sonner";
 
 const NewsAutomation = () => {
+  const [activeTab, setActiveTab] = useState("settings");
   const [isRunning, setIsRunning] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+  const [feeds, setFeeds] = useState<FeedSource[]>([
+    { id: '1', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', active: true },
+    { id: '2', name: 'MIT Technology Review', url: 'https://www.technologyreview.com/topic/artificial-intelligence/feed', active: true },
+    { id: '3', name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/', active: true },
+    { id: '4', name: 'Wired AI', url: 'https://www.wired.com/tag/artificial-intelligence/feed', active: false },
+  ]);
   
-  const handleRunAutomation = () => {
-    setIsProcessing(true);
+  const automationService = AutomationService.getInstance();
+
+  useEffect(() => {
+    // Get the current automation status
+    const status = automationService.getStatus();
+    setIsRunning(status.isRunning);
+    setLastRun(status.lastRun);
     
-    // Simulating processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsRunning(true);
-      toast.success("Automation started successfully");
-    }, 1500);
-  };
-  
-  const handleStopAutomation = () => {
-    setIsProcessing(true);
+    // Set up a timer to periodically check the status
+    const intervalId = setInterval(() => {
+      const updatedStatus = automationService.getStatus();
+      setIsRunning(updatedStatus.isRunning);
+      setLastRun(updatedStatus.lastRun);
+    }, 5000);
     
-    // Simulating processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsRunning(false);
-      toast.info("Automation stopped");
-    }, 1500);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const handleToggleAutomation = async () => {
+    if (isRunning) {
+      const stopped = automationService.stop();
+      if (stopped) {
+        setIsRunning(false);
+        toast.success("News automation stopped");
+      } else {
+        toast.error("Failed to stop automation");
+      }
+    } else {
+      const started = await automationService.start(feeds);
+      if (started) {
+        setIsRunning(true);
+        setLastRun(new Date().toISOString());
+        toast.success("News automation started");
+      } else {
+        toast.error("Failed to start automation");
+      }
+    }
   };
 
   return (
-    <div className="container py-10 space-y-8">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">News Automation</h1>
-        <p className="text-muted-foreground">
-          Automatically fetch, rewrite, and publish AI news articles with generated images.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+    <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <Card className="mb-8">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <CardTitle>Automation Control</CardTitle>
-              <CardDescription>Start, stop, and monitor the news automation process</CardDescription>
+              <CardTitle className="text-2xl">News Automation</CardTitle>
+              <CardDescription className="mt-1.5">
+                Automatically fetch, rewrite, and publish AI news articles
+              </CardDescription>
             </div>
-            <AutomationStatus isRunning={isRunning} />
+            <div className="flex items-center gap-3">
+              <AutomationStatus isRunning={isRunning} lastRun={lastRun || undefined} />
+              <Button 
+                onClick={handleToggleAutomation} 
+                className={isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"}
+              >
+                {isRunning ? (
+                  <>
+                    <Pause className="mr-2 h-4 w-4" /> Stop Automation
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" /> Start Automation
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={isRunning ? handleStopAutomation : handleRunAutomation}
-              disabled={isProcessing}
-              variant={isRunning ? "destructive" : "default"}
-              className="w-40"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : isRunning ? (
-                <>
-                  Stop Automation
-                </>
-              ) : (
-                <>
-                  Start Automation
-                </>
-              )}
-            </Button>
-            
-            <div className="flex flex-col">
-              <div className="flex items-center space-x-2">
-                <Switch id="auto-start" />
-                <label htmlFor="auto-start" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Start automatically on page load
-                </label>
-              </div>
-            </div>
-          </div>
-        </CardContent>
       </Card>
 
-      <Tabs defaultValue="feeds">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="feeds">
-            <RssIcon className="h-4 w-4 mr-2" />
-            RSS Feeds
+      <Tabs defaultValue="settings" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-8 w-full sm:w-auto">
+          <TabsTrigger value="settings" className="flex items-center">
+            <Settings className="mr-2 h-4 w-4" /> Configuration
           </TabsTrigger>
-          <TabsTrigger value="content">
-            <PenLine className="h-4 w-4 mr-2" />
-            Content Generation
+          <TabsTrigger value="logs" className="flex items-center">
+            <FileText className="mr-2 h-4 w-4" /> Activity Logs
           </TabsTrigger>
-          <TabsTrigger value="images">
-            <Image className="h-4 w-4 mr-2" />
-            Image Generation
-          </TabsTrigger>
-          <TabsTrigger value="logs">
-            <Newspaper className="h-4 w-4 mr-2" />
-            Activity Logs
+          <TabsTrigger value="stats" className="flex items-center">
+            <BarChart2 className="mr-2 h-4 w-4" /> Statistics
           </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="feeds" className="space-y-4 mt-4">
+
+        <TabsContent value="settings">
           <Card>
             <CardHeader>
-              <CardTitle>RSS Feed Sources</CardTitle>
-              <CardDescription>
-                Configure the AI news sources to pull content from
-              </CardDescription>
+              <CardTitle>Automation Configuration</CardTitle>
+              <CardDescription>Manage RSS feeds, content settings, and publishing rules</CardDescription>
             </CardHeader>
             <CardContent>
               <AutomationFeedConfig />
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="content" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Content Rewriting</CardTitle>
-              <CardDescription>
-                Configure how content should be rewritten by AI
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <label htmlFor="tone" className="text-sm font-medium">Writing Tone</label>
-                  <select id="tone" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
-                    <option value="formal">Formal & Professional</option>
-                    <option value="conversational">Conversational</option>
-                    <option value="educational">Educational</option>
-                    <option value="technical">Technical</option>
-                  </select>
-                </div>
-                
-                <div className="grid gap-2">
-                  <label htmlFor="length" className="text-sm font-medium">Article Length</label>
-                  <select id="length" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
-                    <option value="short">Short (300-500 words)</option>
-                    <option value="medium">Medium (600-1000 words)</option>
-                    <option value="long">Long (1000-1500 words)</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch id="include-sources" />
-                  <label htmlFor="include-sources" className="text-sm font-medium">
-                    Include original sources citation
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch id="add-summary" defaultChecked />
-                  <label htmlFor="add-summary" className="text-sm font-medium">
-                    Add executive summary section
-                  </label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="images" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Image Generation</CardTitle>
-              <CardDescription>
-                Configure how images are generated for articles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <label htmlFor="style" className="text-sm font-medium">Image Style</label>
-                  <select id="style" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
-                    <option value="photorealistic">Photorealistic</option>
-                    <option value="digital-art">Digital Art</option>
-                    <option value="illustration">Illustration</option>
-                    <option value="3d-render">3D Render</option>
-                  </select>
-                </div>
-                
-                <div className="grid gap-2">
-                  <label htmlFor="count" className="text-sm font-medium">Number of Images</label>
-                  <select id="count" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
-                    <option value="1">1 (Header only)</option>
-                    <option value="2">2 (Header + 1 body image)</option>
-                    <option value="3">3 (Header + 2 body images)</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch id="image-captions" defaultChecked />
-                  <label htmlFor="image-captions" className="text-sm font-medium">
-                    Generate image captions
-                  </label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="logs" className="space-y-4 mt-4">
+
+        <TabsContent value="logs">
           <Card>
             <CardHeader>
               <CardTitle>Activity Logs</CardTitle>
-              <CardDescription>
-                Recent activity from the automation system
-              </CardDescription>
+              <CardDescription>View recent activity and automation events</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[500px]">
-                <AutomationLogs />
-              </ScrollArea>
+              <AutomationLogs />
             </CardContent>
-            <CardFooter className="flex justify-between border-t p-4">
-              <Button variant="outline" size="sm">Clear Logs</Button>
-              <Button variant="outline" size="sm">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
-            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stats">
+          <Card>
+            <CardHeader>
+              <CardTitle>Automation Statistics</CardTitle>
+              <CardDescription>View performance metrics and analytics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-10 text-muted-foreground">
+                Statistics will be available after automation has been running
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

@@ -10,7 +10,9 @@ interface AutomationStatusProps {
 
 const AutomationStatus = ({ isRunning, lastRun }: AutomationStatusProps) => {
   // Default to current time if no last run time provided
-  const formattedLastRun = lastRun || new Date().toLocaleString();
+  const formattedLastRun = lastRun 
+    ? new Date(lastRun).toLocaleString() 
+    : new Date().toLocaleString();
   
   return (
     <TooltipProvider>

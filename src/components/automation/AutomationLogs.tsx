@@ -1,73 +1,26 @@
 
 import { useState, useEffect } from 'react';
 import { Badge } from "@/components/ui/badge";
-
-interface LogEntry {
-  id: string;
-  timestamp: Date;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  source: 'feed' | 'content' | 'image' | 'publish';
-}
+import { AutomationService, AutomationLog } from '@/services/AutomationService';
 
 const AutomationLogs = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<AutomationLog[]>([]);
+  const automationService = AutomationService.getInstance();
 
-  // Generate mock logs
+  // Set up a timer to update the logs every few seconds
   useEffect(() => {
-    const mockLogs: LogEntry[] = [
-      {
-        id: '1',
-        timestamp: new Date(Date.now() - 5 * 60000),
-        message: 'Completed article publishing: "The Future of AI in Healthcare"',
-        type: 'success',
-        source: 'publish'
-      },
-      {
-        id: '2',
-        timestamp: new Date(Date.now() - 7 * 60000),
-        message: 'Generated 2 images for article "The Future of AI in Healthcare"',
-        type: 'success',
-        source: 'image'
-      },
-      {
-        id: '3',
-        timestamp: new Date(Date.now() - 15 * 60000),
-        message: 'Content rewritten successfully (1200 words)',
-        type: 'success',
-        source: 'content'
-      },
-      {
-        id: '4',
-        timestamp: new Date(Date.now() - 20 * 60000),
-        message: 'Found new AI news article from TechCrunch',
-        type: 'info',
-        source: 'feed'
-      },
-      {
-        id: '5',
-        timestamp: new Date(Date.now() - 60 * 60000),
-        message: 'Failed to generate image - API rate limit reached',
-        type: 'error',
-        source: 'image'
-      },
-      {
-        id: '6',
-        timestamp: new Date(Date.now() - 90 * 60000),
-        message: 'Content API returned unexpected response',
-        type: 'warning',
-        source: 'content'
-      },
-      {
-        id: '7',
-        timestamp: new Date(Date.now() - 120 * 60000),
-        message: 'Automation started',
-        type: 'info',
-        source: 'feed'
-      },
-    ];
-
-    setLogs(mockLogs);
+    const updateLogs = () => {
+      const currentLogs = automationService.getLogs();
+      setLogs(currentLogs);
+    };
+    
+    // Update once immediately
+    updateLogs();
+    
+    // Then set up interval
+    const intervalId = setInterval(updateLogs, 5000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const getSourceLabel = (source: string) => {
