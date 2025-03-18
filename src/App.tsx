@@ -10,6 +10,8 @@ import NewsAutomation from "./pages/NewsAutomation";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -21,10 +23,25 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/automation" element={<NewsAutomation />} />
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/automation" 
+            element={
+              <ProtectedRoute>
+                <NewsAutomation />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:id" element={<BlogPost />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
           {/* These routes will be implemented later */}
           <Route path="/category/:category" element={<Index />} />
           <Route path="/about" element={<Index />} />

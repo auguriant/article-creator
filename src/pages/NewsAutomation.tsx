@@ -1,14 +1,16 @@
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Play, Pause, Settings, BarChart2, FileText } from "lucide-react";
+import { Play, Pause, Settings, BarChart2, FileText, LogOut } from "lucide-react";
 import AutomationStatus from "@/components/automation/AutomationStatus";
 import AutomationLogs from "@/components/automation/AutomationLogs";
 import AutomationFeedConfig from "@/components/automation/AutomationFeedConfig";
 import { AutomationService, FeedSource } from "@/services/AutomationService";
+import AuthService from "@/services/AuthService";
 import { toast } from "sonner";
 
 const NewsAutomation = () => {
@@ -22,7 +24,9 @@ const NewsAutomation = () => {
     { id: '4', name: 'Wired AI', url: 'https://www.wired.com/tag/artificial-intelligence/feed', active: false },
   ]);
   
+  const navigate = useNavigate();
   const automationService = AutomationService.getInstance();
+  const authService = AuthService.getInstance();
 
   useEffect(() => {
     // Get the current automation status
@@ -39,6 +43,12 @@ const NewsAutomation = () => {
     
     return () => clearInterval(intervalId);
   }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+    toast.success("Logged out successfully");
+    navigate("/login");
+  };
 
   const handleToggleAutomation = async () => {
     if (isRunning) {
@@ -87,6 +97,13 @@ const NewsAutomation = () => {
                     <Play className="mr-2 h-4 w-4" /> Start Automation
                   </>
                 )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
