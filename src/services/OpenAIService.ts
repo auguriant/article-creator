@@ -142,7 +142,8 @@ export class OpenAIService {
     title: string,
     content: string,
     source: string,
-    tone: string = "professional"
+    tone: string = "professional",
+    topic: string = "artificial intelligence"
   ): Promise<{ title: string; content: string }> {
     if (!this.apiKey) {
       toast.error("OpenAI API key not configured");
@@ -152,9 +153,10 @@ export class OpenAIService {
     try {
       console.log(`Rewriting article: "${title}"`);
       console.log(`Using model: ${this.textModel}, temperature: ${this.temperature}`);
+      console.log(`Tone: ${tone}, Topic: ${topic}`);
       
       const prompt = `
-You are an expert content rewriter specializing in technology news, particularly AI.
+You are an expert content rewriter specializing in technology news, particularly ${topic}.
 Please rewrite the following article with a ${tone} tone. 
 Maintain the factual accuracy but improve the clarity and readability.
 Use HTML formatting for the rewritten content.

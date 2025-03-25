@@ -169,9 +169,13 @@ export function ManualArticle() {
     toast.info("Enhancing content with AI...");
     
     try {
+      const selectedTopicName = topics.find(t => t.id === selectedTopic)?.name || "General";
+      
       const mockArticle = {
+        id: crypto.randomUUID(),
         title: title || "Draft Article",
         content: content,
+        description: content.substring(0, 150),
         source: "Manual Entry",
         link: "",
         pubDate: new Date().toISOString()
@@ -179,7 +183,10 @@ export function ManualArticle() {
       
       const enhancedContent = await ContentService.rewriteContent(
         mockArticle, 
-        { tone: selectedTone as any }
+        { 
+          tone: selectedTone as any,
+          topic: selectedTopicName
+        }
       );
       
       setTitle(enhancedContent.title);
