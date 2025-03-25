@@ -11,6 +11,7 @@ import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ExportPage from "./pages/ExportPage";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Admin />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/export" 
+            element={
+              <ProtectedRoute>
+                <ExportPage />
               </ProtectedRoute>
             } 
           />

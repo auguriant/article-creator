@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut } from "lucide-react";
+import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut, ExternalLink, Download } from "lucide-react";
 import { FeedManagement } from "@/components/admin/FeedManagement";
 import { ApiKeyConfig } from "@/components/admin/ApiKeyConfig";
 import { AiModelConfig } from "@/components/admin/AiModelConfig";
@@ -118,6 +118,15 @@ const Admin = () => {
               )}
               <Button 
                 variant="outline" 
+                onClick={() => navigate("/export")}
+                title="Export Standalone HTML"
+                className="hidden sm:flex"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={handleLogout}
                 title="Logout"
               >
@@ -129,11 +138,11 @@ const Admin = () => {
       </Card>
 
       {!isConfigured && (
-        <Alert variant="warning" className="mb-8">
+        <Alert className="mb-8">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>OpenAI API key not configured</AlertTitle>
+          <AlertTitle>Free AI service is active</AlertTitle>
           <AlertDescription>
-            Please add your OpenAI API key in the API Configuration tab to enable AI-powered features.
+            You're using the free AI service for content generation. For more advanced features, add your OpenAI API key in the API Configuration tab.
           </AlertDescription>
         </Alert>
       )}
@@ -266,6 +275,17 @@ const Admin = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <div className="mt-8 sm:hidden">
+        <Button 
+          onClick={() => navigate("/export")}
+          className="w-full" 
+          variant="outline"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Standalone HTML
+        </Button>
+      </div>
     </div>
   );
 };
