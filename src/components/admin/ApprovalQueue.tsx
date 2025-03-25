@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { RefreshCw, Check, Trash, Edit, FileText } from "lucide-react";
+import { RefreshCw, Check, Trash, Edit, FileText, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PublishService, Article } from "@/services/PublishService";
@@ -22,6 +21,7 @@ import {
 
 interface PendingArticle extends Article {
   status: 'pending' | 'approved' | 'rejected';
+  sourceUrl?: string;
 }
 
 export function ApprovalQueue() {
@@ -125,6 +125,14 @@ export function ApprovalQueue() {
     loadPendingArticles();
   };
 
+  const openOriginalArticle = (url: string) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error("No source URL available");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -172,6 +180,20 @@ export function ApprovalQueue() {
                   <span>Source: {article.sourceName}</span>
                   <span>•</span>
                   <span>Date: {new Date(article.publishDate).toLocaleDateString()}</span>
+                  {article.sourceUrl && (
+                    <>
+                      <span>•</span>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openOriginalArticle(article.sourceUrl || "")}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        View Original
+                      </Button>
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {article.tags.map((tag, i) => (

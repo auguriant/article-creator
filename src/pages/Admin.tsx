@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +28,6 @@ const Admin = () => {
   const authService = AuthService.getInstance();
   const automationService = AutomationService.getInstance();
   
-  // Automation state
   const [isRunning, setIsRunning] = useState(false);
   const [lastRun, setLastRun] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -41,15 +39,12 @@ const Admin = () => {
   ]);
 
   useEffect(() => {
-    // Get the current automation status
     const status = automationService.getStatus();
     setIsRunning(status.isRunning);
     setLastRun(status.lastRun);
     
-    // Get pending article count
     setPendingCount(automationService.getPendingArticleCount());
     
-    // Set up a timer to periodically check the status
     const intervalId = setInterval(() => {
       const updatedStatus = automationService.getStatus();
       setIsRunning(updatedStatus.isRunning);
@@ -158,15 +153,15 @@ const Admin = () => {
           <TabsTrigger value="topics" className="flex items-center">
             <Settings className="mr-2 h-4 w-4" /> Topics
           </TabsTrigger>
-          <TabsTrigger value="manual" className="flex items-center">
-            <FilePen className="mr-2 h-4 w-4" /> Manual Article
-          </TabsTrigger>
           <TabsTrigger value="approval" className="flex items-center">
             <CheckSquare className="mr-2 h-4 w-4" /> 
             Approval Queue
             {pendingCount > 0 && (
               <Badge variant="destructive" className="ml-2">{pendingCount}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center">
+            <FilePen className="mr-2 h-4 w-4" /> Manual Article
           </TabsTrigger>
           <TabsTrigger value="automation" className="flex items-center">
             <Play className="mr-2 h-4 w-4" /> Automation
@@ -209,18 +204,6 @@ const Admin = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="manual">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create Manual Article</CardTitle>
-              <CardDescription>Write and publish articles manually or generate from titles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ManualArticle />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="approval">
           <Card>
             <CardHeader>
@@ -229,6 +212,18 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <ApprovalQueue />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manual">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Manual Article</CardTitle>
+              <CardDescription>Write and publish articles manually or generate from titles</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ManualArticle />
             </CardContent>
           </Card>
         </TabsContent>

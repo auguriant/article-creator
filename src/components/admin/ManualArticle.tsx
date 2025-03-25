@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { RefreshCw, Image, Send, Wand, Save, FileText } from "lucide-react";
+import { RefreshCw, Image, Send, Wand, Save, FileText, Hash, Upload, Clock, Scissors, PenTool, Plus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +14,20 @@ import { ContentService } from "@/services/ContentService";
 import { OpenAIService } from "@/services/OpenAIService";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PdfService } from "@/services/PdfService";
+import { HashtagService } from "@/services/HashtagService";
+import { ContentTone, ContentToneService } from "@/services/ContentToneService";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 
 export function ManualArticle() {
   const [title, setTitle] = useState("");
@@ -20,6 +35,7 @@ export function ManualArticle() {
   const [summary, setSummary] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [manualImageUrl, setManualImageUrl] = useState("");
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -29,11 +45,27 @@ export function ManualArticle() {
   const [useOpenAI, setUseOpenAI] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
   const [articleTab, setArticleTab] = useState("write");
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfContentLength, setPdfContentLength] = useState(500);
+  const [hashtagsResult, setHashtagsResult] = useState<string[]>([]);
+  const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false);
+  const [availableTones, setAvailableTones] = useState<ContentTone[]>([]);
+  const [isCreatingTone, setIsCreatingTone] = useState(false);
+  const [newToneName, setNewToneName] = useState("");
+  const [newToneDescription, setNewToneDescription] = useState("");
+  const [toneExampleArticles, setToneExampleArticles] = useState<string[]>([]);
+  const [currentToneExample, setCurrentToneExample] = useState("");
+  const [isOpeningToneCreator, setIsOpeningToneCreator] = useState(false);
+  const [contentLengthTarget, setContentLengthTarget] = useState(500);
+  const [isOptimizingLength, setIsOptimizingLength] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   
   const openAIService = OpenAIService.getInstance();
   const isAiConfigured = openAIService.isConfigured();
 
-  // Load topics from localStorage
+  // Load topics and tones from localStorage
   useEffect(() => {
     const savedTopics = localStorage.getItem('content_topics');
     if (savedTopics) {
@@ -53,6 +85,9 @@ export function ManualArticle() {
       }
     }
     
+    // Load available content tones
+    setAvailableTones(ContentToneService.getAllTones());
+    
     // Load draft from localStorage if available
     const savedDraft = localStorage.getItem('article_draft');
     if (savedDraft) {
@@ -63,6 +98,7 @@ export function ManualArticle() {
         setSummary(draft.summary || "");
         setImagePrompt(draft.imagePrompt || "");
         setImageUrl(draft.imageUrl || "");
+        setManualImageUrl(draft.manualImageUrl || "");
         if (draft.selectedTopic) setSelectedTopic(draft.selectedTopic);
         if (draft.selectedTone) setSelectedTone(draft.selectedTone);
         setIsDraftSaved(true);
@@ -81,6 +117,7 @@ export function ManualArticle() {
         summary,
         imagePrompt,
         imageUrl,
+        manualImageUrl,
         selectedTopic,
         selectedTone
       };
@@ -91,7 +128,7 @@ export function ManualArticle() {
     // Use a debounce to not save too frequently
     const timeoutId = setTimeout(saveDraft, 2000);
     return () => clearTimeout(timeoutId);
-  }, [title, content, summary, imagePrompt, imageUrl, selectedTopic, selectedTone]);
+  }, [title, content, summary, imagePrompt, imageUrl, manualImageUrl, selectedTopic, selectedTone]);
 
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim()) {
@@ -115,6 +152,7 @@ export function ManualArticle() {
       });
       
       setImageUrl(generatedImageUrl);
+      setManualImageUrl(""); // Clear manual image when generating
       toast.success("Image generated successfully");
     } catch (error) {
       console.error("Error generating image:", error);
@@ -122,6 +160,29 @@ export function ManualArticle() {
     } finally {
       setIsGeneratingImage(false);
     }
+  };
+
+  const handleManualImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size exceeds 5MB limit");
+      return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Selected file is not an image");
+      return;
+    }
+    
+    // Create object URL for the image
+    const imageUrl = URL.createObjectURL(file);
+    setManualImageUrl(imageUrl);
+    setImageUrl(""); // Clear generated image when manually uploading
+    toast.success("Image uploaded successfully");
   };
 
   const handleGenerateSummary = async () => {
@@ -156,8 +217,8 @@ export function ManualArticle() {
       return;
     }
     
-    if (!imageUrl) {
-      toast.error("Please generate an image");
+    if (!imageUrl && !manualImageUrl) {
+      toast.error("Please upload or generate an image");
       return;
     }
     
@@ -171,11 +232,11 @@ export function ManualArticle() {
         title,
         content,
         summary,
-        imageUrl,
+        imageUrl: imageUrl || manualImageUrl,
         sourceUrl: "",
         sourceName: "Manual Entry",
         publishDate: new Date().toISOString(),
-        tags: [selectedTopicName]
+        tags: [...hashtagsResult, selectedTopicName].filter((t, i, a) => a.indexOf(t) === i)
       };
       
       const published = await PublishService.publishArticle(article);
@@ -189,6 +250,8 @@ export function ManualArticle() {
         setSummary("");
         setImagePrompt("");
         setImageUrl("");
+        setManualImageUrl("");
+        setHashtagsResult([]);
         localStorage.removeItem('article_draft');
         setIsDraftSaved(false);
       } else {
@@ -277,6 +340,8 @@ export function ManualArticle() {
       setSummary("");
       setImagePrompt("");
       setImageUrl("");
+      setManualImageUrl("");
+      setHashtagsResult([]);
       localStorage.removeItem('article_draft');
       setIsDraftSaved(false);
       toast.success("Draft cleared");
@@ -328,6 +393,184 @@ export function ManualArticle() {
       setIsGeneratingContent(false);
     }
   };
+  
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingPdf(true);
+    toast.info("Processing PDF file...");
+    
+    try {
+      const extractedText = await PdfService.extractTextFromPdf(file);
+      
+      if (extractedText) {
+        // Set extracted content based on the length target
+        setContent(extractedText.substring(0, pdfContentLength * 4));
+        
+        // Extract title from the first line if possible
+        const possibleTitle = extractedText.split('\n')[0].replace('#', '').trim();
+        if (possibleTitle && !title) {
+          setTitle(possibleTitle);
+        }
+        
+        // Generate a summary
+        setSummary(await ContentService.generateSummary(extractedText, 200));
+        
+        toast.success("PDF content extracted successfully");
+      } else {
+        toast.error("Failed to extract content from PDF");
+      }
+    } catch (error) {
+      console.error("Error processing PDF:", error);
+      toast.error(`Failed to process PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingPdf(false);
+      
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+  
+  const handleGenerateHashtags = async () => {
+    if (!content.trim() && !title.trim()) {
+      toast.error("Please add a title or content first");
+      return;
+    }
+    
+    setIsGeneratingHashtags(true);
+    
+    try {
+      const hashtags = await HashtagService.generateHashtags(
+        title,
+        content
+      );
+      
+      setHashtagsResult(hashtags);
+      toast.success(`Generated ${hashtags.length} hashtags`);
+    } catch (error) {
+      console.error("Error generating hashtags:", error);
+      toast.error(`Failed to generate hashtags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingHashtags(false);
+    }
+  };
+  
+  const handleCreateNewTone = async () => {
+    if (!newToneName.trim()) {
+      toast.error("Please provide a name for the new tone");
+      return;
+    }
+    
+    if (toneExampleArticles.length < 3) {
+      toast.error("Please provide at least 3 example articles for the new tone");
+      return;
+    }
+    
+    setIsCreatingTone(true);
+    
+    try {
+      const newTone = await ContentToneService.createToneFromArticles(
+        newToneName,
+        toneExampleArticles,
+        newToneDescription
+      );
+      
+      setAvailableTones([...availableTones, newTone]);
+      setSelectedTone(newTone.id);
+      
+      // Clear the form
+      setNewToneName("");
+      setNewToneDescription("");
+      setToneExampleArticles([]);
+      setCurrentToneExample("");
+      setIsOpeningToneCreator(false);
+      
+      toast.success(`Created new "${newTone.name}" tone successfully`);
+    } catch (error) {
+      console.error("Error creating tone:", error);
+      toast.error(`Failed to create tone: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCreatingTone(false);
+    }
+  };
+  
+  const handleAddToneExample = () => {
+    if (!currentToneExample.trim()) {
+      toast.error("Please enter example content");
+      return;
+    }
+    
+    setToneExampleArticles([...toneExampleArticles, currentToneExample]);
+    setCurrentToneExample("");
+    toast.success("Example added");
+  };
+  
+  const handleOptimizeLength = async () => {
+    if (!content.trim()) {
+      toast.error("Please write some content first");
+      return;
+    }
+    
+    setIsOptimizingLength(true);
+    
+    try {
+      // Get current word count as a baseline
+      const currentWordCount = content.split(/\s+/).length;
+      const targetWordCount = Math.round(contentLengthTarget / 5); // Rough words per character estimate
+      
+      toast.info(`Optimizing content from ${currentWordCount} words to approximately ${targetWordCount} words...`);
+      
+      // In a real implementation, you would call an AI service here
+      // For this demo, we'll simulate optimization
+      
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simple simulation - truncate or expand content
+      if (currentWordCount > targetWordCount) {
+        // Truncate content
+        const words = content.split(/\s+/);
+        const optimizedContent = words.slice(0, targetWordCount).join(' ');
+        setContent(optimizedContent);
+      } else if (currentWordCount < targetWordCount) {
+        // Expand content
+        const selectedTopicName = topics.find(t => t.id === selectedTopic)?.name || "General";
+        const freeAIService = await import('@/services/FreeAIService').then(m => m.FreeAIService.getInstance());
+        
+        const mockArticle = {
+          id: crypto.randomUUID(),
+          title: title || "Draft Article",
+          content: content,
+          description: content.substring(0, 150),
+          link: "",
+          pubDate: new Date().toISOString(),
+          source: "Manual Entry"
+        };
+        
+        // Rewrite content but with more details to expand it
+        const enhancedContent = await freeAIService.rewriteContent(
+          mockArticle, 
+          { 
+            tone: selectedTone as any,
+            topic: selectedTopicName,
+            length: 'long'
+          }
+        );
+        
+        setContent(enhancedContent.content);
+      }
+      
+      toast.success("Content length optimized successfully");
+    } catch (error) {
+      console.error("Error optimizing length:", error);
+      toast.error(`Failed to optimize length: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsOptimizingLength(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -376,15 +619,43 @@ export function ManualArticle() {
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="content">Article Content</Label>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleEnhanceContent}
-                    disabled={!content.trim() || isGeneratingContent}
-                  >
-                    <Wand className="mr-2 h-4 w-4" />
-                    Enhance with AI
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingPdf}
+                    >
+                      {isUploadingPdf ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Import from PDF
+                        </>
+                      )}
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handlePdfUpload}
+                      accept=".pdf"
+                      className="hidden"
+                    />
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleEnhanceContent}
+                      disabled={!content.trim() || isGeneratingContent}
+                    >
+                      <Wand className="mr-2 h-4 w-4" />
+                      Enhance with AI
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   id="content"
@@ -396,6 +667,83 @@ export function ManualArticle() {
                   }}
                   className="min-h-[300px]"
                 />
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>{content.length} characters, ~{Math.round(content.split(/\s+/).length)} words</span>
+                  <div className="flex items-center gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          disabled={!content.trim() || isOptimizingLength}
+                        >
+                          <Scissors className="mr-2 h-4 w-4" />
+                          Optimize Length
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Optimize Content Length</DialogTitle>
+                          <DialogDescription>
+                            Adjust the target length for your article content
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="py-4 space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label>Target Length (characters)</Label>
+                              <span className="text-sm">{contentLengthTarget}</span>
+                            </div>
+                            <Slider
+                              min={200}
+                              max={5000}
+                              step={100}
+                              value={[contentLengthTarget]}
+                              onValueChange={(value) => setContentLengthTarget(value[0])}
+                            />
+                          </div>
+                          
+                          <div className="bg-secondary/50 rounded p-4 text-sm">
+                            <p className="mb-2 font-medium">Current Content:</p>
+                            <p className="text-muted-foreground">{content.length} characters, ~{Math.round(content.split(/\s+/).length)} words</p>
+                            
+                            <div className="mt-3 mb-1">
+                              <span className="text-xs text-muted-foreground">Length comparison:</span>
+                            </div>
+                            <Progress 
+                              value={(Math.min(content.length, 5000) / 5000) * 100} 
+                              className="h-2 mb-1" 
+                            />
+                            <Progress 
+                              value={(contentLengthTarget / 5000) * 100}
+                              className="h-2 bg-primary/10" 
+                            />
+                          </div>
+                        </div>
+                        
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => {}}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handleOptimizeLength}
+                            disabled={isOptimizingLength}
+                          >
+                            {isOptimizingLength ? (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                Optimizing...
+                              </>
+                            ) : (
+                              "Optimize Content"
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
               </div>
               
               <div className="grid gap-2">
@@ -420,6 +768,47 @@ export function ManualArticle() {
                   }}
                   className="h-24"
                 />
+              </div>
+              
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Hashtags</Label>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleGenerateHashtags}
+                    disabled={isGeneratingHashtags || (!content.trim() && !title.trim())}
+                  >
+                    {isGeneratingHashtags ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Hash className="mr-2 h-4 w-4" />
+                        Generate Hashtags
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 p-3 border rounded-md min-h-10">
+                  {hashtagsResult.length > 0 ? (
+                    hashtagsResult.map((tag, i) => (
+                      <div key={i} className="bg-secondary text-secondary-foreground px-2 py-1 text-xs rounded-full flex items-center">
+                        #{tag}
+                        <button 
+                          className="ml-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => setHashtagsResult(hashtagsResult.filter((_, index) => index !== i))}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No hashtags generated yet</span>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -447,7 +836,104 @@ export function ManualArticle() {
                     </div>
                     
                     <div className="grid gap-2">
-                      <Label htmlFor="tone">Content Tone</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="tone">Content Tone</Label>
+                        <Dialog open={isOpeningToneCreator} onOpenChange={setIsOpeningToneCreator}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <PenTool className="mr-2 h-3 w-3" />
+                              Create Tone
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Create Custom Content Tone</DialogTitle>
+                              <DialogDescription>
+                                Provide at least 3 example articles to create a custom tone
+                              </DialogDescription>
+                            </DialogHeader>
+                            
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="tone-name">Tone Name</Label>
+                                <Input
+                                  id="tone-name"
+                                  placeholder="e.g., Technical, Conversational, Educational"
+                                  value={newToneName}
+                                  onChange={(e) => setNewToneName(e.target.value)}
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="tone-description">Description (Optional)</Label>
+                                <Textarea
+                                  id="tone-description"
+                                  placeholder="Describe your custom tone..."
+                                  value={newToneDescription}
+                                  onChange={(e) => setNewToneDescription(e.target.value)}
+                                  className="h-20"
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label>Example Articles ({toneExampleArticles.length}/3)</Label>
+                                <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                                  {toneExampleArticles.map((example, i) => (
+                                    <div key={i} className="text-xs border-b pb-2 last:border-0 last:pb-0">
+                                      {example.substring(0, 100)}...
+                                    </div>
+                                  ))}
+                                  
+                                  {toneExampleArticles.length === 0 && (
+                                    <div className="text-sm text-muted-foreground">
+                                      No examples added yet
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="example-content">Add Example</Label>
+                                <Textarea
+                                  id="example-content"
+                                  placeholder="Paste an article or content with the desired tone..."
+                                  value={currentToneExample}
+                                  onChange={(e) => setCurrentToneExample(e.target.value)}
+                                  className="h-24"
+                                />
+                                <Button 
+                                  size="sm" 
+                                  onClick={handleAddToneExample}
+                                  disabled={!currentToneExample.trim()}
+                                  className="w-full"
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Add Example
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setIsOpeningToneCreator(false)}>
+                                Cancel
+                              </Button>
+                              <Button 
+                                onClick={handleCreateNewTone}
+                                disabled={isCreatingTone || !newToneName.trim() || toneExampleArticles.length < 3}
+                              >
+                                {isCreatingTone ? (
+                                  <>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                    Creating...
+                                  </>
+                                ) : (
+                                  "Create Tone"
+                                )}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                       <Select value={selectedTone} onValueChange={(val) => {
                         setSelectedTone(val);
                         setIsDraftSaved(false);
@@ -456,9 +942,11 @@ export function ManualArticle() {
                           <SelectValue placeholder="Select a tone" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="professional">Professional</SelectItem>
-                          <SelectItem value="casual">Casual</SelectItem>
-                          <SelectItem value="academic">Academic</SelectItem>
+                          {availableTones.map((tone) => (
+                            <SelectItem key={tone.id} value={tone.id}>
+                              {tone.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -476,48 +964,86 @@ export function ManualArticle() {
                     
                     <div className="grid gap-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="image-prompt">Image Generation Prompt</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleGenerateImagePrompt}
-                          disabled={(!content.trim() && !title.trim())}
-                        >
-                          Generate Prompt
-                        </Button>
+                        <Label htmlFor="image">Article Image</Label>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => imageFileInputRef.current?.click()}
+                          >
+                            <Upload className="mr-2 h-3 w-3" />
+                            Upload
+                          </Button>
+                          <input
+                            type="file"
+                            ref={imageFileInputRef}
+                            onChange={handleManualImageUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="image-prompt"
-                          placeholder="Describe the image you want"
-                          value={imagePrompt}
-                          onChange={(e) => {
-                            setImagePrompt(e.target.value);
-                            setIsDraftSaved(false);
-                          }}
-                          disabled={isGeneratingImage}
-                        />
-                        <Button 
-                          variant="outline"
-                          size="icon"
-                          onClick={handleGenerateImage}
-                          disabled={isGeneratingImage || !imagePrompt.trim()}
-                        >
-                          {isGeneratingImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                      
+                      {manualImageUrl ? (
+                        <div className="mt-2">
+                          <img 
+                            src={manualImageUrl} 
+                            alt="Uploaded" 
+                            className="w-full h-auto rounded-md border" 
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-2 w-full"
+                            onClick={() => setManualImageUrl("")}
+                          >
+                            Remove Image
+                          </Button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="image-prompt"
+                              placeholder="Describe the image you want"
+                              value={imagePrompt}
+                              onChange={(e) => {
+                                setImagePrompt(e.target.value);
+                                setIsDraftSaved(false);
+                              }}
+                              disabled={isGeneratingImage}
+                            />
+                            <Button 
+                              variant="outline"
+                              size="icon"
+                              onClick={handleGenerateImage}
+                              disabled={isGeneratingImage || !imagePrompt.trim()}
+                            >
+                              {isGeneratingImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateImagePrompt}
+                            disabled={(!content.trim() && !title.trim())}
+                            className="mt-1 text-xs h-7 px-2"
+                          >
+                            Generate prompt from content
+                          </Button>
+                          
+                          {imageUrl && (
+                            <div className="mt-2">
+                              <img 
+                                src={imageUrl} 
+                                alt="Generated" 
+                                className="w-full h-auto rounded-md border" 
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    
-                    {imageUrl && (
-                      <div className="mt-4">
-                        <Label className="mb-2 block">Generated Image</Label>
-                        <img 
-                          src={imageUrl} 
-                          alt="Generated" 
-                          className="w-full h-auto rounded-md border" 
-                        />
-                      </div>
-                    )}
                     
                     <div className="flex items-center justify-between pt-4">
                       <div className="text-sm text-muted-foreground">
@@ -542,10 +1068,10 @@ export function ManualArticle() {
           <div className="border rounded-md p-6 space-y-6">
             <div>
               <h1 className="text-2xl font-bold mb-4">{title || "Article Title"}</h1>
-              {imageUrl && (
+              {(imageUrl || manualImageUrl) && (
                 <div className="mb-6">
                   <img 
-                    src={imageUrl} 
+                    src={imageUrl || manualImageUrl} 
                     alt={title} 
                     className="w-full h-auto rounded-md border" 
                   />
@@ -558,6 +1084,18 @@ export function ManualArticle() {
                 className="prose max-w-none"
                 dangerouslySetInnerHTML={{ __html: content || "<p>Article content will appear here...</p>" }}
               ></div>
+              
+              {hashtagsResult.length > 0 && (
+                <div className="mt-6 pt-6 border-t">
+                  <div className="flex flex-wrap gap-2">
+                    {hashtagsResult.map((tag, i) => (
+                      <span key={i} className="bg-secondary text-secondary-foreground px-2 py-1 text-xs rounded-full">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -568,7 +1106,7 @@ export function ManualArticle() {
           variant="outline"
           onClick={() => {
             localStorage.setItem('article_draft', JSON.stringify({
-              title, content, summary, imagePrompt, imageUrl, selectedTopic, selectedTone
+              title, content, summary, imagePrompt, imageUrl, manualImageUrl, selectedTopic, selectedTone
             }));
             setIsDraftSaved(true);
             toast.success("Draft saved");
@@ -580,7 +1118,7 @@ export function ManualArticle() {
         
         <Button 
           onClick={handleSubmit} 
-          disabled={isPublishing || !title.trim() || !content.trim() || !summary.trim() || !imageUrl}
+          disabled={isPublishing || !title.trim() || !content.trim() || !summary.trim() || (!imageUrl && !manualImageUrl)}
         >
           {isPublishing ? (
             <>
