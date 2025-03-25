@@ -2,13 +2,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Database, Key, RefreshCw, Rss, Settings } from "lucide-react";
+import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings } from "lucide-react";
 import { FeedManagement } from "@/components/admin/FeedManagement";
 import { ApiKeyConfig } from "@/components/admin/ApiKeyConfig";
 import { AiModelConfig } from "@/components/admin/AiModelConfig";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { OpenAIService } from "@/services/OpenAIService";
+import { TopicConfig } from "@/components/admin/TopicConfig";
+import { ManualArticle } from "@/components/admin/ManualArticle";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("feeds");
@@ -28,7 +30,7 @@ const Admin = () => {
             <div>
               <CardTitle className="text-2xl">Admin Dashboard</CardTitle>
               <CardDescription className="mt-1.5">
-                Manage RSS feeds, API keys, and AI configuration
+                Manage RSS feeds, API keys, AI configuration, and content
               </CardDescription>
             </div>
           </div>
@@ -46,9 +48,15 @@ const Admin = () => {
       )}
 
       <Tabs defaultValue="feeds" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-8 w-full sm:w-auto">
+        <TabsList className="mb-8 w-full sm:w-auto flex flex-wrap">
           <TabsTrigger value="feeds" className="flex items-center">
             <Rss className="mr-2 h-4 w-4" /> RSS Feeds
+          </TabsTrigger>
+          <TabsTrigger value="topics" className="flex items-center">
+            <Settings className="mr-2 h-4 w-4" /> Topics
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center">
+            <FilePen className="mr-2 h-4 w-4" /> Manual Article
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center">
             <Key className="mr-2 h-4 w-4" /> API Configuration
@@ -69,6 +77,30 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <FeedManagement />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="topics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Topic Configuration</CardTitle>
+              <CardDescription>Manage topics for automated content generation</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TopicConfig />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manual">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Manual Article</CardTitle>
+              <CardDescription>Write and publish articles manually</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ManualArticle />
             </CardContent>
           </Card>
         </TabsContent>

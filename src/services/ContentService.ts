@@ -11,6 +11,7 @@ export interface ContentGenerationParams {
   style?: 'formal' | 'conversational' | 'technical';
   length?: 'short' | 'medium' | 'long';
   perspective?: 'neutral' | 'optimistic' | 'critical';
+  topic?: string;
 }
 
 export class ContentService {
@@ -32,11 +33,15 @@ export class ContentService {
       if (openAIService.isConfigured()) {
         try {
           let tone = params.tone || "professional";
+          let topic = params.topic;
+          
+          // Include topic in the rewriting if specified
           return await openAIService.rewriteContent(
             originalArticle.title,
             originalArticle.content,
             originalArticle.source,
-            tone
+            tone,
+            topic
           );
         } catch (error) {
           console.error("OpenAI content generation failed, falling back to mock:", error);
@@ -57,17 +62,20 @@ export class ContentService {
       if (params.tone === "casual") tone = "conversational";
       if (params.tone === "academic") tone = "scholarly";
       
+      // Get topic if specified
+      const topic = params.topic || "artificial intelligence";
+      
       // Mock rewritten content
-      const rewrittenTitle = `AI Perspective: ${originalArticle.title}`;
+      const rewrittenTitle = `${topic.charAt(0).toUpperCase() + topic.slice(1)} Insights: ${originalArticle.title}`;
       const rewrittenContent = `
         <h2>A Fresh Perspective on ${originalArticle.title}</h2>
-        <p>In the rapidly evolving landscape of artificial intelligence, new developments emerge daily. This article explores recent findings in a ${tone} manner.</p>
-        <p>The original article from ${originalArticle.source} discussed key points about advanced AI technologies and their implications. Let's delve deeper into what this means for the industry.</p>
+        <p>In the rapidly evolving landscape of ${topic}, new developments emerge daily. This article explores recent findings in a ${tone} manner.</p>
+        <p>The original article from ${originalArticle.source} discussed key points about ${topic} technologies and their implications. Let's delve deeper into what this means for the industry.</p>
         <h3>Key Insights</h3>
-        <p>Artificial intelligence continues to transform industries from healthcare to finance. The original insights have been expanded to provide a more comprehensive understanding.</p>
-        <p>As researchers push the boundaries of what's possible, we're seeing unprecedented capabilities in language processing, computer vision, and predictive analytics.</p>
+        <p>${topic.charAt(0).toUpperCase() + topic.slice(1)} continues to transform industries from healthcare to finance. The original insights have been expanded to provide a more comprehensive understanding.</p>
+        <p>As researchers push the boundaries of what's possible, we're seeing unprecedented capabilities in this field.</p>
         <h3>Future Implications</h3>
-        <p>The trajectory of AI development suggests we're only at the beginning of this technological revolution. In the coming years, we can expect more sophisticated systems that blur the line between human and machine intelligence.</p>
+        <p>The trajectory of ${topic} development suggests we're only at the beginning of this technological revolution. In the coming years, we can expect more sophisticated systems that will change how we live and work.</p>
         <p>This article was automatically generated based on content from ${originalArticle.source}, published on ${new Date(originalArticle.pubDate).toLocaleDateString()}.</p>
       `;
       
