@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { RefreshCw, Image, Send, Wand, Save } from "lucide-react";
+import { RefreshCw, Image, Send, Wand, Save, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +21,7 @@ export function ManualArticle() {
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState("");
   const [topics, setTopics] = useState<{ id: string; name: string; isDefault: boolean }[]>([]);
@@ -283,6 +283,52 @@ export function ManualArticle() {
     }
   };
 
+  const handleGenerateFullArticle = async () => {
+    if (!title.trim()) {
+      toast.error("Please provide a title to generate an article");
+      return;
+    }
+
+    if (useOpenAI && !isAiConfigured) {
+      toast.error("OpenAI API is not configured. Using free AI service instead.");
+      setUseOpenAI(false);
+    }
+    
+    setIsGeneratingContent(true);
+    toast.info("Generating article content from title. This may take a moment...");
+    
+    try {
+      const selectedTopicName = topics.find(t => t.id === selectedTopic)?.name || "General";
+      const freeAIService = await import('@/services/FreeAIService').then(m => m.FreeAIService.getInstance());
+      
+      // Generate article content from title
+      const generatedContent = await freeAIService.generateArticleFromTitle(
+        title,
+        selectedTopicName,
+        selectedTone
+      );
+      
+      setContent(generatedContent.content);
+      setSummary(generatedContent.summary || await ContentService.generateSummary(generatedContent.content, 200));
+      
+      // Also generate an image prompt
+      const imagePromptText = await freeAIService.generateImagePrompt(
+        title,
+        generatedContent.content,
+        selectedTopicName
+      );
+      
+      setImagePrompt(imagePromptText);
+      
+      toast.success("Article generated successfully");
+    } catch (error) {
+      console.error("Error generating article:", error);
+      toast.error(`Failed to generate article: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={articleTab} onValueChange={setArticleTab} className="w-full">
@@ -295,7 +341,27 @@ export function ManualArticle() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="md:col-span-2 space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="title">Article Title</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="title">Article Title</Label>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleGenerateFullArticle}
+                    disabled={!title.trim() || isGeneratingContent}
+                  >
+                    {isGeneratingContent ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generate Full Article
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Input
                   id="title"
                   placeholder="Enter article title"
@@ -314,7 +380,7 @@ export function ManualArticle() {
                     variant="outline" 
                     size="sm" 
                     onClick={handleEnhanceContent}
-                    disabled={!content.trim()}
+                    disabled={!content.trim() || isGeneratingContent}
                   >
                     <Wand className="mr-2 h-4 w-4" />
                     Enhance with AI
@@ -322,7 +388,7 @@ export function ManualArticle() {
                 </div>
                 <Textarea
                   id="content"
-                  placeholder="Write your article content here..."
+                  placeholder="Write your article content here or generate it from the title..."
                   value={content}
                   onChange={(e) => {
                     setContent(e.target.value);
@@ -500,9 +566,13 @@ export function ManualArticle() {
       <div className="flex justify-end gap-2">
         <Button 
           variant="outline"
-          onClick={() => localStorage.setItem('article_draft', JSON.stringify({
-            title, content, summary, imagePrompt, imageUrl, selectedTopic, selectedTone
-          }))}
+          onClick={() => {
+            localStorage.setItem('article_draft', JSON.stringify({
+              title, content, summary, imagePrompt, imageUrl, selectedTopic, selectedTone
+            }));
+            setIsDraftSaved(true);
+            toast.success("Draft saved");
+          }}
         >
           <Save className="mr-2 h-4 w-4" />
           Save Draft

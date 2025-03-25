@@ -1,3 +1,4 @@
+
 /**
  * Main service for orchestrating the news automation process
  */
@@ -20,6 +21,7 @@ export interface AutomationSettings {
   maxArticles: number;
   contentParams: ContentGenerationParams;
   imageParams: Partial<ImageGenerationParams>;
+  requireApproval: boolean; // New setting for approval workflow
 }
 
 export interface AutomationLog {
@@ -35,6 +37,7 @@ export class AutomationService {
   private isRunning: boolean = false;
   private intervalId: number | null = null;
   private logs: AutomationLog[] = [];
+  private pendingArticles: (Article & { status: 'pending' | 'approved' | 'rejected' })[] = [];
   private settings: AutomationSettings = {
     interval: 60, // 60 minutes
     maxAge: 1, // 1 day
@@ -48,7 +51,8 @@ export class AutomationService {
     imageParams: {
       style: 'realistic',
       aspectRatio: '16:9'
-    }
+    },
+    requireApproval: true // Default to requiring approval
   };
   
   private constructor() {
@@ -62,6 +66,9 @@ export class AutomationService {
         source: 'feed'
       }
     ];
+    
+    // Load pending articles from localStorage
+    this.loadPendingArticles();
   }
   
   public static getInstance(): AutomationService {
@@ -208,9 +215,7 @@ export class AutomationService {
           
           this.addLog('Image generated successfully', 'success', 'image');
           
-          // Publish article
-          this.addLog(`Publishing article: ${rewrittenContent.title}`, 'info', 'publish');
-          
+          // Create the new article
           const newArticle: Article = {
             id: crypto.randomUUID(),
             title: rewrittenContent.title,
@@ -223,12 +228,20 @@ export class AutomationService {
             tags: ['AI', 'News', 'Technology']
           };
           
-          const published = await PublishService.publishArticle(newArticle);
-          
-          if (published) {
-            this.addLog(`Published article: ${newArticle.title}`, 'success', 'publish');
+          // Either publish directly or add to pending queue
+          if (this.settings.requireApproval) {
+            // Add to pending articles
+            this.addPendingArticle(newArticle);
+            this.addLog(`Article queued for approval: ${newArticle.title}`, 'success', 'publish');
           } else {
-            this.addLog(`Failed to publish article: ${newArticle.title}`, 'error', 'publish');
+            // Publish directly
+            const published = await PublishService.publishArticle(newArticle);
+            
+            if (published) {
+              this.addLog(`Published article: ${newArticle.title}`, 'success', 'publish');
+            } else {
+              this.addLog(`Failed to publish article: ${newArticle.title}`, 'error', 'publish');
+            }
           }
         } catch (error) {
           this.addLog(`Error processing article: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error', 'content');
@@ -275,5 +288,87 @@ export class AutomationService {
    */
   public getSettings(): AutomationSettings {
     return { ...this.settings };
+  }
+  
+  /**
+   * Adds an article to the pending queue
+   */
+  private addPendingArticle(article: Article): void {
+    // Add the article with pending status
+    this.pendingArticles.push({
+      ...article,
+      status: 'pending'
+    });
+    
+    // Save to localStorage
+    this.savePendingArticles();
+    
+    // Notify about the new pending article
+    toast.info("New article awaiting approval", {
+      description: article.title
+    });
+  }
+  
+  /**
+   * Saves pending articles to localStorage
+   */
+  private savePendingArticles(): void {
+    try {
+      localStorage.setItem('pending_articles', JSON.stringify(this.pendingArticles));
+    } catch (error) {
+      console.error("Error saving pending articles:", error);
+    }
+  }
+  
+  /**
+   * Loads pending articles from localStorage
+   */
+  private loadPendingArticles(): void {
+    try {
+      const saved = localStorage.getItem('pending_articles');
+      if (saved) {
+        this.pendingArticles = JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error("Error loading pending articles:", error);
+      this.pendingArticles = [];
+    }
+  }
+  
+  /**
+   * Gets all pending articles
+   */
+  public getPendingArticles(): Promise<(Article & { status: 'pending' | 'approved' | 'rejected' })[]> {
+    // Return a copy of the pending articles array
+    return Promise.resolve([...this.pendingArticles].filter(article => article.status === 'pending'));
+  }
+  
+  /**
+   * Gets the count of pending articles
+   */
+  public getPendingArticleCount(): number {
+    return this.pendingArticles.filter(article => article.status === 'pending').length;
+  }
+  
+  /**
+   * Marks an article as reviewed (approved or rejected)
+   */
+  public async markArticleReviewed(id: string, status: 'approved' | 'rejected'): Promise<boolean> {
+    // Find the article
+    const articleIndex = this.pendingArticles.findIndex(a => a.id === id);
+    if (articleIndex === -1) {
+      return false;
+    }
+    
+    // Update its status
+    this.pendingArticles[articleIndex].status = status;
+    
+    // Save the updated list
+    this.savePendingArticles();
+    
+    // Log the action
+    this.addLog(`Article ${id} marked as ${status}`, 'info', 'publish');
+    
+    return true;
   }
 }

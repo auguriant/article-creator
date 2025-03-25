@@ -1,16 +1,23 @@
 
 /**
- * Service for free AI content generation as an alternative to OpenAI
+ * Service for free AI content generation (no API key required)
  */
 import { toast } from "sonner";
-import { RssFeedItem } from "./RssService";
+
+interface RewrittenContent {
+  title: string;
+  content: string;
+}
+
+interface GeneratedArticle {
+  content: string;
+  summary?: string;
+}
 
 export class FreeAIService {
-  private static instance: FreeAIService;
+  private static instance: FreeAIService | null = null;
   
-  private constructor() {
-    console.log("FreeAIService initialized");
-  }
+  private constructor() {}
   
   public static getInstance(): FreeAIService {
     if (!FreeAIService.instance) {
@@ -19,8 +26,14 @@ export class FreeAIService {
     return FreeAIService.instance;
   }
   
+  private simulateDelay(): Promise<void> {
+    // Simulate AI processing delay (1-3 seconds)
+    const delay = 1000 + Math.random() * 2000;
+    return new Promise(resolve => setTimeout(resolve, delay));
+  }
+  
   /**
-   * Rewrites content using a deterministic algorithm (free alternative)
+   * Rewrites content using a free AI alternative
    */
   public async rewriteContent(
     title: string,
@@ -28,166 +41,293 @@ export class FreeAIService {
     source: string,
     tone: string = "professional",
     topic: string = "general"
-  ): Promise<{ title: string; content: string }> {
-    try {
-      console.log(`Rewriting content with free service: "${title}"`);
-      console.log(`Tone: ${tone}, Topic: ${topic}`);
-      
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Process the title: add topic and make it more engaging based on tone
-      let newTitle = title;
-      if (!newTitle.toLowerCase().includes(topic.toLowerCase()) && topic !== "general") {
-        newTitle = `${topic.charAt(0).toUpperCase() + topic.slice(1)}: ${title}`;
-      }
-      
-      // Add tone modifiers to title
-      if (tone === "professional") {
-        if (!newTitle.includes(":")) newTitle = `The Professional Guide to ${newTitle}`;
-      } else if (tone === "casual") {
-        if (!newTitle.includes("!")) newTitle = `${newTitle} - You Won't Believe This!`;
-      } else if (tone === "academic") {
-        if (!newTitle.includes("Analysis")) newTitle = `${newTitle}: A Comprehensive Analysis`;
-      }
-      
-      // Process the content based on tone and topic
-      let paragraphs = content.split(/(?:<\/p>\s*<p>|<br\s*\/?>|\n\n)/);
-      if (paragraphs.length < 3) {
-        // If content is short or not properly split, create more paragraphs
-        paragraphs = content.split(". ").filter(p => p.trim().length > 0);
-        if (paragraphs.length > 10) {
-          // Combine shorter paragraphs
-          const newParagraphs = [];
-          for (let i = 0; i < paragraphs.length; i += 3) {
-            newParagraphs.push(paragraphs.slice(i, i + 3).join(". ") + ".");
-          }
-          paragraphs = newParagraphs;
-        }
-      }
-      
-      // Add introduction
-      let newContent = `<h2>Exploring ${topic.charAt(0).toUpperCase() + topic.slice(1)}: ${title}</h2>`;
-      
-      // Add tone-specific introduction
-      if (tone === "professional") {
-        newContent += `<p>In today's rapidly evolving landscape of ${topic}, professionals need to stay informed about the latest developments. This article examines key insights from ${source} and provides a practical perspective on their implications.</p>`;
-      } else if (tone === "casual") {
-        newContent += `<p>Hey there! Today we're diving into some really cool stuff about ${topic}. I came across this interesting piece from ${source} and just had to share my thoughts with you all!</p>`;
-      } else if (tone === "academic") {
-        newContent += `<p>The following analysis examines recent developments in the field of ${topic}, as reported by ${source}. This paper aims to contextualize these findings within the broader academic discourse and evaluate their significance.</p>`;
-      }
-      
-      // Add main content with modifications
-      newContent += `<h3>Key Points</h3>`;
-      
-      // Reformat paragraphs with tone-specific language
-      paragraphs.forEach((paragraph, index) => {
-        paragraph = paragraph.trim().replace(/<\/?[^>]+(>|$)/g, ""); // Remove any HTML tags
-        
-        if (paragraph.length < 10) return; // Skip very short paragraphs
-        
-        if (tone === "professional") {
-          if (index === 0) {
-            newContent += `<p>Industry experts emphasize that ${paragraph}</p>`;
-          } else if (index === paragraphs.length - 1) {
-            newContent += `<p>In conclusion, ${paragraph}</p>`;
-          } else {
-            newContent += `<p>Furthermore, research indicates that ${paragraph}</p>`;
-          }
-        } else if (tone === "casual") {
-          if (index === 0) {
-            newContent += `<p>So check this out - ${paragraph}</p>`;
-          } else if (index === paragraphs.length - 1) {
-            newContent += `<p>And that's the scoop! ${paragraph}</p>`;
-          } else {
-            newContent += `<p>What's really cool is that ${paragraph}</p>`;
-          }
-        } else if (tone === "academic") {
-          if (index === 0) {
-            newContent += `<p>The primary findings suggest that ${paragraph}</p>`;
-          } else if (index === paragraphs.length - 1) {
-            newContent += `<p>Therefore, we can conclude that ${paragraph}</p>`;
-          } else {
-            newContent += `<p>Analysis of the data reveals that ${paragraph}</p>`;
-          }
-        }
-      });
-      
-      // Add concluding section
-      newContent += `<h3>Implications for ${topic.charAt(0).toUpperCase() + topic.slice(1)}</h3>`;
-      
-      if (tone === "professional") {
-        newContent += `<p>For professionals working in ${topic}, these developments represent both challenges and opportunities. Organizations should consider updating their strategies to align with these emerging trends.</p>`;
-      } else if (tone === "casual") {
-        newContent += `<p>So what does all this mean for ${topic} enthusiasts like us? Well, it's definitely shaking things up! Keep an eye on these trends as they unfold.</p>`;
-      } else if (tone === "academic") {
-        newContent += `<p>These findings contribute to the existing body of knowledge on ${topic} and suggest several avenues for future research. Further studies may explore the causal relationships between these phenomena.</p>`;
-      }
-      
-      // Add attribution
-      newContent += `<p><em>This article was based on content from ${source}, published on ${new Date().toLocaleDateString()}.</em></p>`;
-      
-      return {
-        title: newTitle,
-        content: newContent
-      };
-    } catch (error) {
-      console.error("Error in free content rewriting:", error);
-      toast.error(`Failed to rewrite content: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
-      // Return original content as fallback
-      return {
-        title,
-        content
-      };
-    }
+  ): Promise<RewrittenContent> {
+    console.log(`Rewriting content with free AI service`);
+    console.log(`Title: ${title}`);
+    console.log(`Source: ${source}`);
+    console.log(`Tone: ${tone}`);
+    console.log(`Topic: ${topic}`);
+    
+    await this.simulateDelay();
+    
+    // This is a mock implementation that just transforms the content slightly
+    // In a real implementation, this would call a free AI service
+    
+    // Make basic transformations to simulate rewriting
+    const rewrittenTitle = this.rewriteTitle(title, tone);
+    const rewrittenContent = this.rewriteText(content, tone, topic);
+    
+    return {
+      title: rewrittenTitle,
+      content: rewrittenContent
+    };
   }
   
   /**
-   * Generates an image description that can be used with free image services
+   * Generates an image prompt based on content
    */
   public async generateImagePrompt(
     title: string,
     content: string,
-    topic: string = "general"
+    topic: string
   ): Promise<string> {
-    try {
-      // Extract keywords from title and content
-      const combinedText = title + " " + content.substring(0, 200);
-      const words = combinedText.toLowerCase()
-        .replace(/<[^>]+>/g, '') // Remove HTML tags
-        .replace(/[^\w\s]/g, '') // Remove punctuation
-        .split(/\s+/) // Split by whitespace
-        .filter(word => word.length > 3 && !["this", "that", "with", "from", "about", "their", "there"].includes(word));
+    console.log(`Generating image prompt with free AI service`);
+    await this.simulateDelay();
+    
+    // Extract important words and phrases
+    const keywords = [...new Set([
+      ...title.split(/\s+/).filter(word => word.length > 4),
+      ...content.substring(0, 200).split(/\s+/).filter(word => word.length > 6)
+    ])].slice(0, 5);
+    
+    // Create a prompt combining the title, topic, and some style guidance
+    return `${title}, ${topic}, ${keywords.join(", ")}, high quality, detailed, professional photo`;
+  }
+  
+  /**
+   * Generates a full article from just a title
+   */
+  public async generateArticleFromTitle(
+    title: string,
+    topic: string = "general",
+    tone: string = "professional"
+  ): Promise<GeneratedArticle> {
+    console.log(`Generating article from title with free AI service`);
+    console.log(`Title: ${title}`);
+    console.log(`Topic: ${topic}`);
+    console.log(`Tone: ${tone}`);
+    
+    await this.simulateDelay();
+    
+    // In a real implementation, this would call a free AI service
+    // For now, we'll generate a templated article
+    
+    const paragraphs = this.generateParagraphsFromTitle(title, topic, tone);
+    const content = paragraphs.join("\n\n");
+    const summary = this.generateSummaryFromTitle(title, topic);
+    
+    return {
+      content,
+      summary
+    };
+  }
+  
+  /**
+   * Utility method to rewrite a title
+   */
+  private rewriteTitle(title: string, tone: string): string {
+    // Simple rewrite logic - in a real implementation this would use an AI model
+    const prefix = tone === "professional" ? "The Complete Guide to" :
+                  tone === "casual" ? "Everything You Need to Know About" :
+                  "A Comprehensive Analysis of";
+                  
+    // If the title already has a common prefix, don't add another one
+    const commonPrefixes = ["How to", "Why", "The", "A Guide to", "Understanding"];
+    const hasPrefix = commonPrefixes.some(p => title.startsWith(p));
+    
+    if (hasPrefix) {
+      return title;
+    }
+    
+    // Extract the main subject from the title
+    const mainSubject = title.length > 30 ? title : `${prefix} ${title}`;
+    return mainSubject;
+  }
+  
+  /**
+   * Utility method to rewrite text content
+   */
+  private rewriteText(text: string, tone: string, topic: string): string {
+    // Basic rewrite - in a real implementation this would use an AI model
+    const paragraphs = text.split(/\n\n+/);
+    const rewrittenParagraphs = paragraphs.map(p => {
+      if (p.trim().length < 10) return p;
       
-      // Get most frequent relevant words
-      const wordCounts: Record<string, number> = {};
-      words.forEach(word => {
-        wordCounts[word] = (wordCounts[word] || 0) + 1;
-      });
+      // Add topic-specific terminology
+      const topicTerms = this.getTopicTerminology(topic);
+      const hasTerm = topicTerms.some(term => p.includes(term));
       
-      // Sort words by frequency
-      const sortedWords = Object.entries(wordCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(entry => entry[0]);
-      
-      // Create image prompt
-      let imagePrompt = `${topic} concept with `;
-      
-      if (sortedWords.length > 0) {
-        imagePrompt += sortedWords.join(", ");
-      } else {
-        imagePrompt += `visualization of ${topic}`;
+      if (!hasTerm && topicTerms.length > 0) {
+        // Add a relevant term
+        const term = topicTerms[Math.floor(Math.random() * topicTerms.length)];
+        return `${p} This relates to ${term} in important ways.`;
       }
       
-      imagePrompt += ", professional photography, high quality, detailed";
+      return p;
+    });
+    
+    // Add an introduction and conclusion if the text is long enough
+    if (text.length > 200) {
+      const introduction = this.generateIntroduction(tone, topic);
+      const conclusion = this.generateConclusion(tone);
       
-      return imagePrompt;
-    } catch (error) {
-      console.error("Error generating image prompt:", error);
-      return `${topic} concept, professional photography`;
+      return `${introduction}\n\n${rewrittenParagraphs.join("\n\n")}\n\n${conclusion}`;
     }
+    
+    return rewrittenParagraphs.join("\n\n");
+  }
+  
+  /**
+   * Generates paragraphs based on a title
+   */
+  private generateParagraphsFromTitle(title: string, topic: string, tone: string): string[] {
+    const paragraphs: string[] = [];
+    
+    // Introduction
+    paragraphs.push(this.generateIntroduction(tone, topic));
+    
+    // Main content - generate 4-6 paragraphs
+    const numParagraphs = 4 + Math.floor(Math.random() * 3);
+    
+    // Generate subtopics based on the title
+    const subtopics = this.generateSubtopics(title, topic, numParagraphs);
+    
+    for (const subtopic of subtopics) {
+      paragraphs.push(this.generateParagraphForSubtopic(subtopic, tone, topic));
+    }
+    
+    // Conclusion
+    paragraphs.push(this.generateConclusion(tone));
+    
+    return paragraphs;
+  }
+  
+  /**
+   * Generates a summary from a title
+   */
+  private generateSummaryFromTitle(title: string, topic: string): string {
+    const summaries = [
+      `A comprehensive exploration of ${title} and its implications for ${topic}.`,
+      `This article examines the key aspects of ${title} and how they relate to ${topic}.`,
+      `Discover the fascinating world of ${title} and why it matters in the context of ${topic}.`,
+      `An in-depth analysis of ${title} that reveals important insights about ${topic}.`
+    ];
+    
+    return summaries[Math.floor(Math.random() * summaries.length)];
+  }
+  
+  /**
+   * Generates an introduction paragraph
+   */
+  private generateIntroduction(tone: string, topic: string): string {
+    const introductions = {
+      professional: [
+        `In today's rapidly evolving ${topic} landscape, professionals are constantly seeking innovative solutions to address emerging challenges. This article examines key developments and provides actionable insights for practitioners in the field.`,
+        `The ${topic} sector has undergone significant transformation in recent years, with new technologies and methodologies reshaping traditional approaches. This analysis explores current trends and their implications for industry stakeholders.`
+      ],
+      casual: [
+        `Hey there! Ever wondered what's really going on in the world of ${topic}? You're not alone! In this article, we'll break down the latest trends and give you some cool insights that you can actually use.`,
+        `Let's face it - ${topic} can be confusing sometimes. But don't worry! We're going to walk through everything you need to know in simple, straightforward terms that anyone can understand.`
+      ],
+      academic: [
+        `This paper examines the theoretical frameworks underpinning contemporary ${topic} discourse, with particular attention to the epistemological foundations and methodological approaches employed by researchers in the field.`,
+        `Recent scholarly literature has highlighted significant paradigm shifts within ${topic} studies. This research contributes to the ongoing academic dialogue by synthesizing disparate theoretical perspectives and proposing a more integrated analytical framework.`
+      ]
+    };
+    
+    const options = introductions[tone as keyof typeof introductions] || introductions.professional;
+    return options[Math.floor(Math.random() * options.length)];
+  }
+  
+  /**
+   * Generates a conclusion paragraph
+   */
+  private generateConclusion(tone: string): string {
+    const conclusions = {
+      professional: [
+        `In conclusion, organizations that adopt these evidence-based approaches will be better positioned to navigate the complexities of today's business environment. By implementing the strategies outlined above, professionals can enhance operational efficiency while driving sustainable growth.`,
+        `Moving forward, industry leaders should consider how these insights can inform their strategic planning processes. Those who successfully integrate these principles will likely gain competitive advantage in an increasingly challenging marketplace.`
+      ],
+      casual: [
+        `So there you have it! Now you're up to speed on everything you need to know. Remember, the most important thing is to keep learning and stay curious. Don't be afraid to try out some of these ideas yourself!`,
+        `Bottom line? This stuff matters, and now you know why! Take these tips and run with them - you'll be surprised at how quickly you'll see results. And don't forget to share what you've learned with friends who might find it helpful too!`
+      ],
+      academic: [
+        `This analysis contributes to the scholarly discourse by identifying critical intersections between theoretical constructs and empirical observations. Future research directions might include longitudinal studies examining the temporal dynamics of these relationships and cross-cultural comparisons to assess generalizability across diverse contexts.`,
+        `The findings presented herein have significant implications for both theory development and empirical research methodologies. While acknowledging the limitations inherent in the current analytical framework, this paper establishes a foundation for more nuanced investigations of these complex phenomena.`
+      ]
+    };
+    
+    const options = conclusions[tone as keyof typeof conclusions] || conclusions.professional;
+    return options[Math.floor(Math.random() * options.length)];
+  }
+  
+  /**
+   * Generates subtopics based on a title
+   */
+  private generateSubtopics(title: string, topic: string, count: number): string[] {
+    const genericSubtopics = [
+      "Historical Background",
+      "Current Trends",
+      "Benefits and Advantages",
+      "Challenges and Limitations",
+      "Best Practices",
+      "Case Studies",
+      "Future Directions",
+      "Practical Applications",
+      "Theoretical Framework",
+      "Comparative Analysis",
+      "Implementation Strategies",
+      "Key Considerations"
+    ];
+    
+    // Shuffle and take the requested number
+    return [...genericSubtopics]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, count);
+  }
+  
+  /**
+   * Generates a paragraph for a specific subtopic
+   */
+  private generateParagraphForSubtopic(subtopic: string, tone: string, topic: string): string {
+    const topicTerms = this.getTopicTerminology(topic);
+    const randomTerm = topicTerms[Math.floor(Math.random() * topicTerms.length)] || topic;
+    
+    const paragraphs = {
+      professional: [
+        `When considering ${subtopic}, professionals in the ${topic} field must account for multiple factors. Research indicates that organizations implementing structured approaches achieve significantly better outcomes. Recent data suggests that ${randomTerm} plays a crucial role in optimizing performance and ensuring sustainable results over time.`,
+        `${subtopic} represents a critical dimension of ${topic} strategy. Industry leaders have demonstrated that systematic analysis of key metrics can reveal valuable insights for decision-makers. The integration of ${randomTerm} has emerged as a best practice for organizations seeking to maintain competitive advantage in evolving market conditions.`
+      ],
+      casual: [
+        `Let's talk about ${subtopic} for a minute. It's actually pretty fascinating when you dig into it! Most people don't realize how important this is in ${topic}. The cool thing about ${randomTerm} is how it connects everything together in ways you might not expect.`,
+        `So what's the deal with ${subtopic}? Well, it turns out it's super important in ${topic}. Think about it - whenever you're dealing with ${randomTerm}, you're actually touching on some pretty complex stuff, but it doesn't have to be complicated!`
+      ],
+      academic: [
+        `An examination of ${subtopic} reveals complex interdependencies within the broader ${topic} domain. Theoretical models suggest a correlation between structural variables and functional outcomes, particularly when mediated by ${randomTerm}. The literature indicates statistically significant relationships between these constructs (p < .05), though causality remains a subject of scholarly debate.`,
+        `The ${subtopic} paradigm offers a useful heuristic for analyzing ${topic} phenomena. Meta-analyses of recent studies demonstrate consistent patterns across diverse contexts, with ${randomTerm} emerging as a significant predictor of observed variations. These findings challenge traditional assumptions and suggest the need for more nuanced theoretical frameworks.`
+      ]
+    };
+    
+    const options = paragraphs[tone as keyof typeof paragraphs] || paragraphs.professional;
+    return options[Math.floor(Math.random() * options.length)];
+  }
+  
+  /**
+   * Returns terminology related to a specific topic
+   */
+  private getTopicTerminology(topic: string): string[] {
+    const topicMap: Record<string, string[]> = {
+      "technology": ["artificial intelligence", "machine learning", "blockchain", "cloud computing", "edge computing", "IoT", "big data", "neural networks"],
+      "finance": ["cryptocurrency", "blockchain", "financial technology", "risk management", "portfolio diversification", "market volatility", "asset allocation"],
+      "health": ["telemedicine", "preventive care", "healthcare informatics", "patient-centered care", "evidence-based medicine", "holistic approaches"],
+      "education": ["e-learning", "adaptive learning systems", "educational technology", "student-centered pedagogy", "continuous assessment", "lifelong learning"],
+      "marketing": ["customer segmentation", "digital marketing", "content strategy", "conversion optimization", "engagement metrics", "brand positioning"],
+      "general": ["strategic implementation", "optimization", "innovative approaches", "systematic methodology", "best practices", "efficiency measures"]
+    };
+    
+    // Normalize the topic to match our keys
+    const normalizedTopic = topic.toLowerCase();
+    let bestMatch = "general";
+    
+    // Find the best matching topic
+    for (const key of Object.keys(topicMap)) {
+      if (normalizedTopic.includes(key) || key.includes(normalizedTopic)) {
+        bestMatch = key;
+        break;
+      }
+    }
+    
+    return topicMap[bestMatch] || topicMap.general;
   }
 }

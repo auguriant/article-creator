@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
@@ -49,15 +49,12 @@ const App = () => (
           <Route path="/terms" element={<Index />} />
           <Route path="/privacy" element={<Index />} />
           <Route path="/cookies" element={<Index />} />
-          {/* Redirect old automation route to admin */}
+          {/* Redirect old routes */}
           <Route 
             path="/automation" 
-            element={
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/admin" replace />}
           />
+          <Route path="/news-automation" element={<Navigate to="/admin" replace />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

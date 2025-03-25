@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut, ExternalLink, Download } from "lucide-react";
+import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut, ExternalLink, Download, CheckSquare } from "lucide-react";
 import { FeedManagement } from "@/components/admin/FeedManagement";
 import { ApiKeyConfig } from "@/components/admin/ApiKeyConfig";
 import { AiModelConfig } from "@/components/admin/AiModelConfig";
@@ -18,6 +18,8 @@ import AutomationFeedConfig from "@/components/automation/AutomationFeedConfig";
 import AutomationLogs from "@/components/automation/AutomationLogs";
 import AutomationStatus from "@/components/automation/AutomationStatus";
 import { AutomationService, FeedSource } from "@/services/AutomationService";
+import { ApprovalQueue } from "@/components/admin/ApprovalQueue";
+import { Badge } from "@/components/ui/badge";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("feeds");
@@ -30,6 +32,7 @@ const Admin = () => {
   // Automation state
   const [isRunning, setIsRunning] = useState(false);
   const [lastRun, setLastRun] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [feeds, setFeeds] = useState<FeedSource[]>([
     { id: '1', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', active: true },
     { id: '2', name: 'MIT Technology Review', url: 'https://www.technologyreview.com/topic/artificial-intelligence/feed', active: true },
@@ -43,11 +46,15 @@ const Admin = () => {
     setIsRunning(status.isRunning);
     setLastRun(status.lastRun);
     
+    // Get pending article count
+    setPendingCount(automationService.getPendingArticleCount());
+    
     // Set up a timer to periodically check the status
     const intervalId = setInterval(() => {
       const updatedStatus = automationService.getStatus();
       setIsRunning(updatedStatus.isRunning);
       setLastRun(updatedStatus.lastRun);
+      setPendingCount(automationService.getPendingArticleCount());
     }, 5000);
     
     return () => clearInterval(intervalId);
@@ -93,29 +100,25 @@ const Admin = () => {
             <div>
               <CardTitle className="text-2xl">Admin Dashboard</CardTitle>
               <CardDescription className="mt-1.5">
-                Manage RSS feeds, API keys, AI configuration, and content
+                Manage RSS feeds, AI configuration, and content
               </CardDescription>
             </div>
             <div className="flex items-center gap-3">
-              {activeTab === "automation" && (
-                <>
-                  <AutomationStatus isRunning={isRunning} lastRun={lastRun || undefined} />
-                  <Button 
-                    onClick={handleToggleAutomation} 
-                    className={isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"}
-                  >
-                    {isRunning ? (
-                      <>
-                        <Pause className="mr-2 h-4 w-4" /> Stop Automation
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 h-4 w-4" /> Start Automation
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
+              <AutomationStatus isRunning={isRunning} lastRun={lastRun || undefined} />
+              <Button 
+                onClick={handleToggleAutomation} 
+                className={isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"}
+              >
+                {isRunning ? (
+                  <>
+                    <Pause className="mr-2 h-4 w-4" /> Stop Automation
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" /> Start Automation
+                  </>
+                )}
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => navigate("/export")}
@@ -157,6 +160,13 @@ const Admin = () => {
           </TabsTrigger>
           <TabsTrigger value="manual" className="flex items-center">
             <FilePen className="mr-2 h-4 w-4" /> Manual Article
+          </TabsTrigger>
+          <TabsTrigger value="approval" className="flex items-center">
+            <CheckSquare className="mr-2 h-4 w-4" /> 
+            Approval Queue
+            {pendingCount > 0 && (
+              <Badge variant="destructive" className="ml-2">{pendingCount}</Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="automation" className="flex items-center">
             <Play className="mr-2 h-4 w-4" /> Automation
@@ -203,10 +213,22 @@ const Admin = () => {
           <Card>
             <CardHeader>
               <CardTitle>Create Manual Article</CardTitle>
-              <CardDescription>Write and publish articles manually</CardDescription>
+              <CardDescription>Write and publish articles manually or generate from titles</CardDescription>
             </CardHeader>
             <CardContent>
               <ManualArticle />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="approval">
+          <Card>
+            <CardHeader>
+              <CardTitle>Article Approval Queue</CardTitle>
+              <CardDescription>Review, edit and approve articles before publishing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ApprovalQueue />
             </CardContent>
           </Card>
         </TabsContent>
