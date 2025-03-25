@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Trash2, Check, X } from "lucide-react";
+import { PlusCircle, Trash2, Check, X, Save } from "lucide-react";
 import { toast } from "sonner";
 import { FeedSource } from '@/services/AutomationService';
 import { AutomationService } from '@/services/AutomationService';
@@ -23,14 +22,13 @@ const AutomationFeedConfig = () => {
   const [maxArticles, setMaxArticles] = useState('3');
   const automationService = AutomationService.getInstance();
 
-  // Update settings when form values change
+  // Load settings from service on mount
   useEffect(() => {
-    automationService.updateSettings({
-      interval: parseInt(fetchInterval, 10),
-      maxAge: parseInt(maxAge, 10),
-      maxArticles: parseInt(maxArticles, 10),
-    });
-  }, [fetchInterval, maxAge, maxArticles]);
+    const settings = automationService.getSettings();
+    setFetchInterval(settings.interval.toString());
+    setMaxAge(settings.maxAge.toString());
+    setMaxArticles(settings.maxArticles.toString());
+  }, []);
 
   const handleAddFeed = () => {
     if (!newFeedName.trim() || !newFeedUrl.trim()) {
@@ -71,6 +69,15 @@ const AutomationFeedConfig = () => {
     } catch (e) {
       toast.error("Invalid URL format. Please enter a valid URL");
     }
+  };
+
+  const handleSaveSettings = () => {
+    automationService.updateSettings({
+      interval: parseInt(fetchInterval, 10),
+      maxAge: parseInt(maxAge, 10),
+      maxArticles: parseInt(maxArticles, 10),
+    });
+    toast.success("Global feed settings saved successfully");
   };
 
   return (
@@ -158,7 +165,18 @@ const AutomationFeedConfig = () => {
       </div>
       
       <div className="pt-4 border-t">
-        <h3 className="text-sm font-medium mb-3">Global Feed Settings</h3>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-sm font-medium">Global Feed Settings</h3>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSaveSettings}
+            className="flex items-center gap-1"
+          >
+            <Save className="h-4 w-4" />
+            Save Settings
+          </Button>
+        </div>
         <div className="space-y-4">
           <div className="grid gap-2">
             <label htmlFor="fetch-interval" className="text-sm font-medium">Fetch Interval</label>

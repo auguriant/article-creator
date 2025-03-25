@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import NewsAutomation from "./pages/NewsAutomation";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
@@ -24,14 +23,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
-          <Route 
-            path="/automation" 
-            element={
-              <ProtectedRoute>
-                <NewsAutomation />
-              </ProtectedRoute>
-            } 
-          />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:id" element={<BlogPost />} />
           <Route 
@@ -49,6 +40,15 @@ const App = () => (
           <Route path="/terms" element={<Index />} />
           <Route path="/privacy" element={<Index />} />
           <Route path="/cookies" element={<Index />} />
+          {/* Redirect old automation route to admin */}
+          <Route 
+            path="/automation" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

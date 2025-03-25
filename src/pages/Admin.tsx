@@ -1,8 +1,8 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings } from "lucide-react";
+import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut } from "lucide-react";
 import { FeedManagement } from "@/components/admin/FeedManagement";
 import { ApiKeyConfig } from "@/components/admin/ApiKeyConfig";
 import { AiModelConfig } from "@/components/admin/AiModelConfig";
@@ -11,15 +11,78 @@ import { toast } from "sonner";
 import { OpenAIService } from "@/services/OpenAIService";
 import { TopicConfig } from "@/components/admin/TopicConfig";
 import { ManualArticle } from "@/components/admin/ManualArticle";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import AuthService from "@/services/AuthService";
+import AutomationFeedConfig from "@/components/automation/AutomationFeedConfig";
+import AutomationLogs from "@/components/automation/AutomationLogs";
+import AutomationStatus from "@/components/automation/AutomationStatus";
+import { AutomationService, FeedSource } from "@/services/AutomationService";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("feeds");
   const openAIService = OpenAIService.getInstance();
   const [isConfigured, setIsConfigured] = useState(openAIService.isConfigured());
+  const navigate = useNavigate();
+  const authService = AuthService.getInstance();
+  const automationService = AutomationService.getInstance();
+  
+  // Automation state
+  const [isRunning, setIsRunning] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+  const [feeds, setFeeds] = useState<FeedSource[]>([
+    { id: '1', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', active: true },
+    { id: '2', name: 'MIT Technology Review', url: 'https://www.technologyreview.com/topic/artificial-intelligence/feed', active: true },
+    { id: '3', name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/', active: true },
+    { id: '4', name: 'Wired AI', url: 'https://www.wired.com/tag/artificial-intelligence/feed', active: false },
+  ]);
+
+  useEffect(() => {
+    // Get the current automation status
+    const status = automationService.getStatus();
+    setIsRunning(status.isRunning);
+    setLastRun(status.lastRun);
+    
+    // Set up a timer to periodically check the status
+    const intervalId = setInterval(() => {
+      const updatedStatus = automationService.getStatus();
+      setIsRunning(updatedStatus.isRunning);
+      setLastRun(updatedStatus.lastRun);
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleConfigUpdate = () => {
     setIsConfigured(openAIService.isConfigured());
     toast.success("Configuration updated successfully");
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    toast.success("Logged out successfully");
+    navigate("/login");
+  };
+
+  const handleToggleAutomation = async () => {
+    if (isRunning) {
+      const stopped = automationService.stop();
+      if (stopped) {
+        setIsRunning(false);
+        toast.success("News automation stopped");
+      } else {
+        toast.error("Failed to stop automation");
+      }
+    } else {
+      const started = await automationService.start(feeds);
+      if (started) {
+        setIsRunning(true);
+        setLastRun(new Date().toISOString());
+        toast.success("News automation started");
+      } else {
+        toast.error("Failed to start automation");
+      }
+    }
   };
 
   return (
@@ -32,6 +95,34 @@ const Admin = () => {
               <CardDescription className="mt-1.5">
                 Manage RSS feeds, API keys, AI configuration, and content
               </CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              {activeTab === "automation" && (
+                <>
+                  <AutomationStatus isRunning={isRunning} lastRun={lastRun || undefined} />
+                  <Button 
+                    onClick={handleToggleAutomation} 
+                    className={isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"}
+                  >
+                    {isRunning ? (
+                      <>
+                        <Pause className="mr-2 h-4 w-4" /> Stop Automation
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-4 w-4" /> Start Automation
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -57,6 +148,12 @@ const Admin = () => {
           </TabsTrigger>
           <TabsTrigger value="manual" className="flex items-center">
             <FilePen className="mr-2 h-4 w-4" /> Manual Article
+          </TabsTrigger>
+          <TabsTrigger value="automation" className="flex items-center">
+            <Play className="mr-2 h-4 w-4" /> Automation
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center">
+            <FileText className="mr-2 h-4 w-4" /> Activity Logs
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center">
             <Key className="mr-2 h-4 w-4" /> API Configuration
@@ -101,6 +198,30 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <ManualArticle />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="automation">
+          <Card>
+            <CardHeader>
+              <CardTitle>Automation Configuration</CardTitle>
+              <CardDescription>Manage RSS feeds, content settings, and publishing rules</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AutomationFeedConfig />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Logs</CardTitle>
+              <CardDescription>View recent activity and automation events</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AutomationLogs />
             </CardContent>
           </Card>
         </TabsContent>
