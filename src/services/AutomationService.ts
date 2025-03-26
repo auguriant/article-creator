@@ -1,3 +1,4 @@
+
 /**
  * Service for handling automation workflows
  */
@@ -14,9 +15,23 @@ export interface FeedSource {
   active: boolean;
 }
 
+export interface AutomationSettings {
+  interval: number;
+  maxAge: number;
+  maxArticles: number;
+}
+
 export interface AutomationStatus {
   isRunning: boolean;
   lastRun: string | null;
+}
+
+export interface AutomationLog {
+  id: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  message: string;
+  source: string;
+  timestamp: Date;
 }
 
 export class AutomationService {
@@ -26,11 +41,17 @@ export class AutomationService {
     lastRun: null
   };
   
+  private settings: AutomationSettings = {
+    interval: 60,
+    maxAge: 1,
+    maxArticles: 3
+  };
+  
   // Mock database of pending articles awaiting review
   private pendingArticles: Article[] = [];
   
   // Mock activity logs
-  private activityLogs: {timestamp: string; action: string; details: string}[] = [];
+  private activityLogs: AutomationLog[] = [];
   
   private constructor() {
     // Initialize with some fake pending articles
@@ -62,19 +83,25 @@ export class AutomationService {
     // Initialize with some fake activity logs
     this.activityLogs = [
       {
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        action: "FETCH",
-        details: "Fetched 12 articles from 3 RSS feeds"
+        id: crypto.randomUUID(),
+        timestamp: new Date(Date.now() - 3600000),
+        type: 'info',
+        message: "Fetched 12 articles from 3 RSS feeds",
+        source: "feed"
       },
       {
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        action: "REWRITE",
-        details: "Generated AI content for 5 articles"
+        id: crypto.randomUUID(),
+        timestamp: new Date(Date.now() - 7200000),
+        type: 'success',
+        message: "Generated AI content for 5 articles",
+        source: "content"
       },
       {
-        timestamp: new Date(Date.now() - 10800000).toISOString(),
-        action: "PUBLISH",
-        details: "Published 3 approved articles"
+        id: crypto.randomUUID(),
+        timestamp: new Date(Date.now() - 10800000),
+        type: 'info',
+        message: "Published 3 approved articles",
+        source: "publish"
       }
     ];
   }
@@ -90,6 +117,15 @@ export class AutomationService {
     return this.status;
   }
   
+  public getSettings(): AutomationSettings {
+    return { ...this.settings };
+  }
+  
+  public updateSettings(settings: Partial<AutomationSettings>): void {
+    this.settings = { ...this.settings, ...settings };
+    console.log("Updated automation settings:", this.settings);
+  }
+  
   public getPendingArticles(): Article[] {
     return [...this.pendingArticles];
   }
@@ -98,9 +134,9 @@ export class AutomationService {
     return this.pendingArticles.length;
   }
   
-  public getActivityLogs(): {timestamp: string; action: string; details: string}[] {
+  public getLogs(): AutomationLog[] {
     return [...this.activityLogs].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      b.timestamp.getTime() - a.timestamp.getTime()
     );
   }
   
@@ -235,9 +271,11 @@ export class AutomationService {
   
   private logActivity(action: string, details: string): void {
     this.activityLogs.push({
-      timestamp: new Date().toISOString(),
-      action,
-      details
+      id: crypto.randomUUID(),
+      timestamp: new Date(),
+      type: 'info',
+      message: details,
+      source: action.toLowerCase()
     });
     
     // Keep only the 100 most recent logs

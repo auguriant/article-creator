@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -19,9 +20,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-interface PendingArticle extends Article {
+interface PendingArticle extends Omit<Article, 'sourceUrl'> {
   status: 'pending' | 'approved' | 'rejected';
-  sourceUrl?: string;
+  sourceUrl: string; // Make sourceUrl required to match Article interface
 }
 
 export function ApprovalQueue() {
@@ -44,7 +45,12 @@ export function ApprovalQueue() {
     setIsLoading(true);
     try {
       const articles = await automationService.getPendingArticles();
-      setPendingArticles(articles);
+      // Convert Article[] to PendingArticle[] by adding status
+      const pendingArticlesWithStatus: PendingArticle[] = articles.map(article => ({
+        ...article,
+        status: 'pending',
+      }));
+      setPendingArticles(pendingArticlesWithStatus);
     } catch (error) {
       console.error("Error loading pending articles:", error);
       toast.error("Failed to load pending articles");
@@ -56,7 +62,12 @@ export function ApprovalQueue() {
   const handleApprove = async (article: PendingArticle) => {
     setIsPublishing(true);
     try {
-      const success = await PublishService.publishArticle(article);
+      // Convert PendingArticle to Article for publishing
+      const articleToPublish: Article = {
+        ...article
+      };
+      
+      const success = await PublishService.publishArticle(articleToPublish);
       if (success) {
         await automationService.markArticleReviewed(article.id, 'approved');
         setPendingArticles(pendingArticles.filter(a => a.id !== article.id));
@@ -100,7 +111,7 @@ export function ApprovalQueue() {
         ...selectedArticle,
         title: editedTitle,
         content: editedContent,
-        summary: editedSummary
+        summary: editedSummary,
       };
       
       const success = await PublishService.publishArticle(updatedArticle);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { PublishService, Article } from "@/services/PublishService";
-import { ImageService } from "@/services/ImageService";
+import { ImageService } from "./ImageServiceExtension";
 import { ContentService } from "@/services/ContentService";
 import { OpenAIService } from "@/services/OpenAIService";
 import { Switch } from "@/components/ui/switch";
@@ -65,7 +64,6 @@ export function ManualArticle() {
   const openAIService = OpenAIService.getInstance();
   const isAiConfigured = openAIService.isConfigured();
 
-  // Load topics and tones from localStorage
   useEffect(() => {
     const savedTopics = localStorage.getItem('content_topics');
     if (savedTopics) {
@@ -73,7 +71,6 @@ export function ManualArticle() {
         const parsedTopics = JSON.parse(savedTopics);
         setTopics(parsedTopics);
         
-        // Set the default topic if available
         const defaultTopic = parsedTopics.find((t: any) => t.isDefault);
         if (defaultTopic) {
           setSelectedTopic(defaultTopic.id);
@@ -85,10 +82,8 @@ export function ManualArticle() {
       }
     }
     
-    // Load available content tones
     setAvailableTones(ContentToneService.getAllTones());
     
-    // Load draft from localStorage if available
     const savedDraft = localStorage.getItem('article_draft');
     if (savedDraft) {
       try {
@@ -108,7 +103,6 @@ export function ManualArticle() {
     }
   }, []);
   
-  // Save draft to localStorage when content changes
   useEffect(() => {
     const saveDraft = () => {
       const draft = {
@@ -125,7 +119,6 @@ export function ManualArticle() {
       setIsDraftSaved(true);
     };
     
-    // Use a debounce to not save too frequently
     const timeoutId = setTimeout(saveDraft, 2000);
     return () => clearTimeout(timeoutId);
   }, [title, content, summary, imagePrompt, imageUrl, manualImageUrl, selectedTopic, selectedTone]);
@@ -166,19 +159,16 @@ export function ManualArticle() {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image size exceeds 5MB limit");
       return;
     }
     
-    // Check file type
     if (!file.type.startsWith('image/')) {
       toast.error("Selected file is not an image");
       return;
     }
     
-    // Create object URL for the image
     const imageUrl = URL.createObjectURL(file);
     setManualImageUrl(imageUrl);
     setImageUrl(""); // Clear generated image when manually uploading
@@ -244,7 +234,6 @@ export function ManualArticle() {
       if (published) {
         toast.success("Article published successfully");
         
-        // Reset form and clear draft
         setTitle("");
         setContent("");
         setSummary("");
@@ -364,10 +353,8 @@ export function ManualArticle() {
     
     try {
       const selectedTopicName = topics.find(t => t.id === selectedTopic)?.name || "General";
-      const freeAIService = await import('@/services/FreeAIService').then(m => m.FreeAIService.getInstance());
       
-      // Generate article content from title
-      const generatedContent = await freeAIService.generateArticleFromTitle(
+      const generatedContent = await ContentService.generateFromTitle(
         title,
         selectedTopicName,
         selectedTone
@@ -376,7 +363,7 @@ export function ManualArticle() {
       setContent(generatedContent.content);
       setSummary(generatedContent.summary || await ContentService.generateSummary(generatedContent.content, 200));
       
-      // Also generate an image prompt
+      const freeAIService = await import('@/services/FreeAIService').then(m => m.FreeAIService.getInstance());
       const imagePromptText = await freeAIService.generateImagePrompt(
         title,
         generatedContent.content,
@@ -405,16 +392,13 @@ export function ManualArticle() {
       const extractedText = await PdfService.extractTextFromPdf(file);
       
       if (extractedText) {
-        // Set extracted content based on the length target
         setContent(extractedText.substring(0, pdfContentLength * 4));
         
-        // Extract title from the first line if possible
         const possibleTitle = extractedText.split('\n')[0].replace('#', '').trim();
         if (possibleTitle && !title) {
           setTitle(possibleTitle);
         }
         
-        // Generate a summary
         setSummary(await ContentService.generateSummary(extractedText, 200));
         
         toast.success("PDF content extracted successfully");
@@ -427,7 +411,6 @@ export function ManualArticle() {
     } finally {
       setIsUploadingPdf(false);
       
-      // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -481,7 +464,6 @@ export function ManualArticle() {
       setAvailableTones([...availableTones, newTone]);
       setSelectedTone(newTone.id);
       
-      // Clear the form
       setNewToneName("");
       setNewToneDescription("");
       setToneExampleArticles([]);
@@ -517,58 +499,49 @@ export function ManualArticle() {
     setIsOptimizingLength(true);
     
     try {
-      // Get current word count as a baseline
       const currentWordCount = content.split(/\s+/).length;
-      const targetWordCount = Math.round(contentLengthTarget / 5); // Rough words per character estimate
+      const targetWordCount = Math.round(contentLengthTarget / 5);
       
       toast.info(`Optimizing content from ${currentWordCount} words to approximately ${targetWordCount} words...`);
       
-      // In a real implementation, you would call an AI service here
-      // For this demo, we'll simulate optimization
+      const optimizedContent = await ContentService.optimizeContentLength(
+        content,
+        contentLengthTarget,
+        selectedTone
+      );
       
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simple simulation - truncate or expand content
-      if (currentWordCount > targetWordCount) {
-        // Truncate content
-        const words = content.split(/\s+/);
-        const optimizedContent = words.slice(0, targetWordCount).join(' ');
-        setContent(optimizedContent);
-      } else if (currentWordCount < targetWordCount) {
-        // Expand content
-        const selectedTopicName = topics.find(t => t.id === selectedTopic)?.name || "General";
-        const freeAIService = await import('@/services/FreeAIService').then(m => m.FreeAIService.getInstance());
-        
-        const mockArticle = {
-          id: crypto.randomUUID(),
-          title: title || "Draft Article",
-          content: content,
-          description: content.substring(0, 150),
-          link: "",
-          pubDate: new Date().toISOString(),
-          source: "Manual Entry"
-        };
-        
-        // Rewrite content but with more details to expand it
-        const enhancedContent = await freeAIService.rewriteContent(
-          mockArticle, 
-          { 
-            tone: selectedTone as any,
-            topic: selectedTopicName,
-            length: 'long'
-          }
-        );
-        
-        setContent(enhancedContent.content);
-      }
-      
+      setContent(optimizedContent);
       toast.success("Content length optimized successfully");
     } catch (error) {
       console.error("Error optimizing length:", error);
       toast.error(`Failed to optimize length: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsOptimizingLength(false);
+    }
+  };
+
+  const handleSearchImages = async () => {
+    if (!imagePrompt.trim()) {
+      toast.error("Please provide an image prompt");
+      return;
+    }
+    
+    setIsGeneratingImage(true);
+    
+    try {
+      const images = await ImageService.searchImages(imagePrompt, 4);
+      
+      if (images && images.length > 0) {
+        setImageUrl(images[0]);
+        toast.success(`Found ${images.length} images`);
+      } else {
+        toast.error("No images found for your prompt");
+      }
+    } catch (error) {
+      console.error("Error searching for images:", error);
+      toast.error(`Failed to search images: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 

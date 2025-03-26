@@ -1,15 +1,14 @@
 
 /**
- * Don't modify this file directly; instead, create a new file for your changes
- * and extend this service.
+ * Extension for the ImageService to add additional methods
  */
+import { ImageService as OriginalImageService } from '@/services/ImageService';
 
-// Let's add the missing searchImages method since we can't directly modify this file
-export class ImageServiceExtension {
+class ImageServiceExtensionClass {
   /**
    * Searches for images based on a prompt
    */
-  static async searchImages(prompt: string, count: number = 4): Promise<string[]> {
+  async searchImages(prompt: string, count: number = 4): Promise<string[]> {
     try {
       console.log(`Searching for images with prompt: ${prompt}`);
       
@@ -33,12 +32,13 @@ export class ImageServiceExtension {
   }
 }
 
-// Now let's export the original ImageService with our extension methods
-import { ImageService as OriginalImageService } from '@/services/ImageService';
+// Create instance for instance methods
+const extensionInstance = new ImageServiceExtensionClass();
 
+// Export the combined service
 export const ImageService = {
   ...OriginalImageService,
   
   // Add the new method
-  searchImages: ImageServiceExtension.searchImages
+  searchImages: (prompt: string, count?: number) => extensionInstance.searchImages(prompt, count)
 };
