@@ -1,3 +1,4 @@
+
 /**
  * Service for AI content generation and rewriting
  */
@@ -173,7 +174,8 @@ export class ContentService {
           source: "Manual Entry"
         };
         
-        // Rewrite content but with more details to expand it
+        // Fix: The issue is here - we need to pass the correct parameters to rewriteContent
+        // The FreeAIService.rewriteContent expects an article object and then parameters
         const enhancedContent = await freeAIService.rewriteContent(
           mockArticle, 
           { 
