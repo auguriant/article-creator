@@ -1,12 +1,21 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash, Plus, Check, X, RefreshCw } from "lucide-react";
+import { Trash, Plus, Check, X, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { FeedFinder } from './FeedManagementExtension';
+import { RssFindService, FoundRssFeed } from '@/services/RssFindService';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function FeedManagement() {
   const [feeds, setFeeds] = useState<{ id: string; url: string; name: string; active: boolean }[]>([]);
@@ -15,8 +24,11 @@ export function FeedManagement() {
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchUrl, setSearchUrl] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [foundFeeds, setFoundFeeds] = useState<FoundRssFeed[]>([]);
+  const [findDialogOpen, setFindDialogOpen] = useState(false);
 
-  // Load feeds from localStorage on component mount
   useEffect(() => {
     const savedFeeds = localStorage.getItem('rss_feeds');
     if (savedFeeds) {
@@ -29,7 +41,6 @@ export function FeedManagement() {
     setIsLoading(false);
   }, []);
 
-  // Save feeds to localStorage when they change
   useEffect(() => {
     if (!isLoading) {
       localStorage.setItem('rss_feeds', JSON.stringify(feeds));
@@ -49,7 +60,6 @@ export function FeedManagement() {
 
     setIsAdding(true);
     
-    // Simulate API call delay
     setTimeout(() => {
       const newFeed = {
         id: crypto.randomUUID(),
@@ -87,7 +97,6 @@ export function FeedManagement() {
   const handleSaveAll = () => {
     setIsSaving(true);
     
-    // Simulate API call delay
     setTimeout(() => {
       localStorage.setItem('rss_feeds', JSON.stringify(feeds));
       setIsSaving(false);
@@ -105,6 +114,45 @@ export function FeedManagement() {
     
     setFeeds([...feeds, newFeed]);
     toast.success(`Added feed: ${name}`);
+  };
+
+  const handleSearchRssFeeds = async () => {
+    if (!searchUrl.trim()) {
+      toast.error("Please enter a website URL");
+      return;
+    }
+
+    setIsSearching(true);
+    setFoundFeeds([]);
+
+    try {
+      const feeds = await RssFindService.findRssFeeds(searchUrl);
+      setFoundFeeds(feeds);
+      
+      if (feeds.length === 0) {
+        toast.warning("No RSS feeds found on this website");
+      } else {
+        toast.success(`Found ${feeds.length} RSS feeds`);
+      }
+    } catch (error) {
+      console.error("Error finding RSS feeds:", error);
+      toast.error("Failed to find RSS feeds");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddFoundRssFeed = (feed: FoundRssFeed) => {
+    const newFeed = {
+      id: crypto.randomUUID(),
+      url: feed.url,
+      name: feed.title,
+      active: true
+    };
+    
+    setFeeds([...feeds, newFeed]);
+    toast.success(`Added feed: ${feed.title}`);
+    setFindDialogOpen(false);
   };
 
   if (isLoading) {
@@ -202,6 +250,88 @@ export function FeedManagement() {
                 </>
               )}
             </Button>
+            <Dialog open={findDialogOpen} onOpenChange={setFindDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Search className="mr-2 h-4 w-4" />
+                  Find RSS
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Find RSS Feeds</DialogTitle>
+                  <DialogDescription>
+                    Enter a website URL to search for available RSS feeds.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-end gap-2">
+                    <div className="grid flex-1 gap-2">
+                      <Label htmlFor="search-url">Website URL</Label>
+                      <Input
+                        id="search-url"
+                        placeholder="https://example.com"
+                        value={searchUrl}
+                        onChange={(e) => setSearchUrl(e.target.value)}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleSearchRssFeeds} 
+                      disabled={isSearching || !searchUrl}
+                    >
+                      {isSearching ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {foundFeeds.length > 0 && (
+                    <div className="border rounded-md divide-y mt-2">
+                      {foundFeeds.map((feed, index) => (
+                        <div key={index} className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-sm">{feed.title}</div>
+                            <div className="text-xs text-muted-foreground truncate max-w-[300px]">{feed.url}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Items: {feed.itemCount} • {feed.language || "unknown"}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddFoundRssFeed(feed)}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {isSearching && (
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  
+                  {!isSearching && foundFeeds.length === 0 && searchUrl && (
+                    <div className="text-center py-6 text-muted-foreground border rounded-md">
+                      <p>No RSS feeds found. Try another URL.</p>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setFindDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <FeedFinder onAddFeed={handleAddFoundFeed} />
           </div>
         </div>
