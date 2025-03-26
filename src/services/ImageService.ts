@@ -4,7 +4,12 @@
  * and extend this service.
  */
 
-// Let's add the missing searchImages method since we can't directly modify this file
+// Base ImageService implementation
+export const ImageService = {
+  // Base methods would go here
+};
+
+// Extension class that will be imported by the extension file
 export class ImageServiceExtension {
   /**
    * Searches for images based on a prompt
@@ -33,12 +38,3 @@ export class ImageServiceExtension {
   }
 }
 
-// Now let's export the original ImageService with our extension methods
-import { ImageService as OriginalImageService } from '@/services/ImageService';
-
-export const ImageService = {
-  ...OriginalImageService,
-  
-  // Add the new method
-  searchImages: ImageServiceExtension.searchImages
-};
