@@ -153,15 +153,15 @@ const Admin = () => {
           <TabsTrigger value="topics" className="flex items-center">
             <Settings className="mr-2 h-4 w-4" /> Topics
           </TabsTrigger>
-          <TabsTrigger value="manual" className="flex items-center">
-            <FilePen className="mr-2 h-4 w-4" /> Manual Article
-          </TabsTrigger>
           <TabsTrigger value="approval" className="flex items-center">
             <CheckSquare className="mr-2 h-4 w-4" /> 
             Approval Queue
             {pendingCount > 0 && (
               <Badge variant="destructive" className="ml-2">{pendingCount}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center">
+            <FilePen className="mr-2 h-4 w-4" /> Manual Article
           </TabsTrigger>
           <TabsTrigger value="automation" className="flex items-center">
             <Play className="mr-2 h-4 w-4" /> Automation
