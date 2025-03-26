@@ -7,6 +7,26 @@
 // Base ImageService implementation
 export const ImageService = {
   // Base methods would go here
+  generateImage: async (options: { 
+    prompt: string;
+    style?: string;
+    aspectRatio?: string;
+    useOpenAI?: boolean;
+  }): Promise<string> => {
+    try {
+      console.log(`Generating image with prompt: ${options.prompt}`);
+      console.log(`Options: ${JSON.stringify(options)}`);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Return a dummy image URL
+      return "https://images.unsplash.com/photo-1620712943543-bcc4688e7485";
+    } catch (error) {
+      console.error("Error generating image:", error);
+      throw error;
+    }
+  }
 };
 
 // Extension class that will be imported by the extension file

@@ -11,3 +11,4 @@ export const ImageService = {
   // Add the new method
   searchImages: ImageServiceExtension.searchImages
 };
+
