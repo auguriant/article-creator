@@ -87,6 +87,18 @@ const Admin = () => {
     }
   };
 
+  const isTabDisabled = (tab: string) => {
+    return ["api", "ai", "db"].includes(tab);
+  };
+
+  const handleTabChange = (value: string) => {
+    if (!isTabDisabled(value)) {
+      setActiveTab(value);
+    } else {
+      toast.error("This feature is coming soon");
+    }
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <Card className="mb-8">
@@ -140,12 +152,12 @@ const Admin = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Free AI service is active</AlertTitle>
           <AlertDescription>
-            You're using the free AI service for content generation. For more advanced features, add your OpenAI API key in the API Configuration tab.
+            You're using the free AI service for content generation.
           </AlertDescription>
         </Alert>
       )}
 
-      <Tabs defaultValue="feeds" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="feeds" value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-8 w-full sm:w-auto flex flex-wrap">
           <TabsTrigger value="feeds" className="flex items-center">
             <Rss className="mr-2 h-4 w-4" /> RSS Feeds
@@ -169,13 +181,13 @@ const Admin = () => {
           <TabsTrigger value="logs" className="flex items-center">
             <FileText className="mr-2 h-4 w-4" /> Activity Logs
           </TabsTrigger>
-          <TabsTrigger value="api" className="flex items-center">
+          <TabsTrigger value="api" className="flex items-center" disabled={isTabDisabled('api')}>
             <Key className="mr-2 h-4 w-4" /> API Configuration
           </TabsTrigger>
-          <TabsTrigger value="ai" className="flex items-center">
+          <TabsTrigger value="ai" className="flex items-center" disabled={isTabDisabled('ai')}>
             <RefreshCw className="mr-2 h-4 w-4" /> AI Models
           </TabsTrigger>
-          <TabsTrigger value="db" className="flex items-center">
+          <TabsTrigger value="db" className="flex items-center" disabled={isTabDisabled('db')}>
             <Database className="mr-2 h-4 w-4" /> Database
           </TabsTrigger>
         </TabsList>
@@ -259,7 +271,13 @@ const Admin = () => {
               <CardDescription>Configure API keys for external services</CardDescription>
             </CardHeader>
             <CardContent>
-              <ApiKeyConfig onUpdate={handleConfigUpdate} />
+              <div className="rounded-md border p-6 flex flex-col items-center justify-center text-center">
+                <Key className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">API Configuration Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  This feature is currently under development and will be available in a future update.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -271,7 +289,13 @@ const Admin = () => {
               <CardDescription>Configure AI models and parameters</CardDescription>
             </CardHeader>
             <CardContent>
-              <AiModelConfig onUpdate={handleConfigUpdate} />
+              <div className="rounded-md border p-6 flex flex-col items-center justify-center text-center">
+                <RefreshCw className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">AI Model Configuration Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  This feature is currently under development and will be available in a future update.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -283,10 +307,12 @@ const Admin = () => {
               <CardDescription>View and manage stored articles</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <div className="p-4 text-center text-muted-foreground">
-                  Database management features coming soon
-                </div>
+              <div className="rounded-md border p-6 flex flex-col items-center justify-center text-center">
+                <Database className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Database Management Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  This feature is currently under development and will be available in a future update.
+                </p>
               </div>
             </CardContent>
           </Card>
