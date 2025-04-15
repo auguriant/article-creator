@@ -9,5 +9,6 @@ export const ImageService = {
   ...BaseImageService,
   
   // Add the new method
-  searchImages: ImageServiceExtension.searchImages
+  searchImages: ImageServiceExtension.searchImages,
+  generateImage: BaseImageService.generateImage
 };

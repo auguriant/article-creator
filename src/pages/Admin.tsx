@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut, ExternalLink, Download, CheckSquare } from "lucide-react";
+import { AlertCircle, Database, FilePen, Key, RefreshCw, Rss, Settings, Play, Pause, BarChart2, FileText, LogOut, ExternalLink, Download, CheckSquare, LayoutDashboard } from "lucide-react";
 import { FeedManagement } from "@/components/admin/FeedManagement";
 import { ApiKeyConfig } from "@/components/admin/ApiKeyConfig";
 import { AiModelConfig } from "@/components/admin/AiModelConfig";
@@ -19,9 +20,10 @@ import AutomationStatus from "@/components/automation/AutomationStatus";
 import { AutomationService, FeedSource } from "@/services/AutomationService";
 import { ApprovalQueue } from "@/components/admin/ApprovalQueue";
 import { Badge } from "@/components/ui/badge";
+import { DashboardPanel } from "@/components/admin/DashboardPanel";
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState("feeds");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const openAIService = OpenAIService.getInstance();
   const [isConfigured, setIsConfigured] = useState(openAIService.isConfigured());
   const navigate = useNavigate();
@@ -157,8 +159,11 @@ const Admin = () => {
         </Alert>
       )}
 
-      <Tabs defaultValue="feeds" value={activeTab} onValueChange={handleTabChange}>
+      <Tabs defaultValue="dashboard" value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-8 w-full sm:w-auto flex flex-wrap">
+          <TabsTrigger value="dashboard" className="flex items-center">
+            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+          </TabsTrigger>
           <TabsTrigger value="feeds" className="flex items-center">
             <Rss className="mr-2 h-4 w-4" /> RSS Feeds
           </TabsTrigger>
@@ -191,6 +196,18 @@ const Admin = () => {
             <Database className="mr-2 h-4 w-4" /> Database
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dashboard Overview</CardTitle>
+              <CardDescription>Key metrics and quick actions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DashboardPanel />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="feeds">
           <Card>
