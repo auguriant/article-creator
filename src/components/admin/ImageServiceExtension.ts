@@ -8,7 +8,7 @@ import { ImageService as BaseImageService, ImageServiceExtension } from '@/servi
 export const ImageService = {
   ...BaseImageService,
   
-  // Add the new method
+  // Add all methods explicitly to ensure TypeScript picks them up correctly
   searchImages: ImageServiceExtension.searchImages,
   generateImage: BaseImageService.generateImage
 };
